@@ -269,6 +269,11 @@ aside {
 
 .sidebar-collapsed .mark--logo {
   width: 48px;
+  height: 48px;
+
+  .brand-logo-img {
+    height: 48px;
+  }
 }
 
 // ==================== NAV GROUPS ====================
