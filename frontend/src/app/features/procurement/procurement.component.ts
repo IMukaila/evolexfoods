@@ -173,7 +173,7 @@ export class ProcurementComponent implements OnInit {
         },
         error: (error: HttpErrorResponse) => {
           this.busy.set(false);
-          this.notice.set(error.error?.message ?? 'The request could not be submitted. Try again.');
+          this.notice.set(firstError(error) ?? 'The request could not be submitted. Try again.');
         }
       });
   }

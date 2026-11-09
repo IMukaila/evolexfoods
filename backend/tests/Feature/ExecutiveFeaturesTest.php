@@ -7,6 +7,7 @@ use App\Models\Pregnancy;
 use App\Models\PurchaseRequest;
 use App\Models\User;
 use App\Services\AnimalIdGenerator;
+use Database\Seeders\LocationSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
@@ -185,6 +186,16 @@ class ExecutiveFeaturesTest extends TestCase
             ->assertJsonPath('request.approval_stage', 'ordered');
 
         $this->assertSame('ordered', PurchaseRequest::find($id)->status);
+    }
+
+    public function test_standard_farm_locations_are_available_to_the_animal_form(): void
+    {
+        $this->seed(LocationSeeder::class);
+
+        $this->actingAs($this->user('farm_manager'), 'sanctum')
+            ->getJson('/api/v1/locations')
+            ->assertOk()
+            ->assertJsonCount(5);
     }
 
     public function test_supervisor_can_decide_a_small_purchase(): void

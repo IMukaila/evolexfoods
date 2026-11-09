@@ -10,7 +10,9 @@
     </div>
     <div class="head-actions">
       <a class="btn btn--quiet" routerLink="/breeding">Breeding workspace</a>
-      <button type="button" class="btn btn--solid" (click)="load()">Refresh</button>
+      <button type="button" class="btn btn--solid" (click)="load()" [disabled]="state() === 'loading'">
+        {{ state() === 'loading' ? 'Refreshing…' : 'Refresh' }}
+      </button>
     </div>
   </header>
 
@@ -24,6 +26,13 @@
       <p>{{ errorMessage() }}</p>
       <button type="button" class="btn btn--solid" (click)="load()">Try again</button>
     </section>
+  }
+
+  @if (state() === 'error' && view()) {
+    <div class="notice notice--alert" role="alert">
+      <span>{{ errorMessage() }}</span>
+      <button type="button" class="text-button" (click)="load()">Try again</button>
+    </div>
   }
 
   @if (view(); as vm) {

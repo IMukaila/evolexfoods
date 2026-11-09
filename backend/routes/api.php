@@ -20,6 +20,16 @@ use App\Http\Controllers\Api\V1\RoleController;
 use App\Http\Controllers\Api\V1\SettingsController;
 use Illuminate\Support\Facades\Route;
 
+// Railway health check — no auth required
+Route::get('/health', function () {
+    try {
+        \Illuminate\Support\Facades\DB::connection()->getPdo();
+        return response()->json(['status' => 'ok', 'db' => 'connected'], 200);
+    } catch (\Exception $e) {
+        return response()->json(['status' => 'error', 'db' => 'disconnected'], 500);
+    }
+});
+
 Route::prefix('v1')->group(function () {
     Route::post('/auth/login', [AuthController::class, 'login'])->name('login');
 

@@ -1,7 +1,7 @@
 import { AfterViewInit, Component, ElementRef, HostListener, NgZone, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { NgClass, NgFor, NgIf } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import DataTable from 'datatables.net';
 import { ApiService } from '../../core/services/api.service';
 import {
@@ -18,7 +18,7 @@ import { GovernanceNavComponent } from '../governance/governance-nav.component';
 @Component({
   selector: 'app-crud-page',
   standalone: true,
-  imports: [NgFor, NgIf, NgClass, FormsModule, FinanceNavComponent, GovernanceNavComponent],
+  imports: [NgFor, NgIf, NgClass, FormsModule, RouterLink, FinanceNavComponent, GovernanceNavComponent],
   templateUrl: './crud-page.component.html',
   styleUrl: './crud-page.component.scss'
 })
@@ -327,7 +327,9 @@ export class CrudPageComponent implements OnInit, AfterViewInit, OnDestroy {
     this.editingId = row.id;
     this.form = {};
     this.def.fields.forEach((field) => {
-      const value = row[field.key];
+      const value = field.key === 'company_name' && this.resource === 'contacts'
+        ? row.company_name || row.company?.name
+        : row[field.key];
       this.form[field.key] = field.type === 'date' ? this.toDateInput(value) : (value ?? '');
     });
     this.showForm = true;

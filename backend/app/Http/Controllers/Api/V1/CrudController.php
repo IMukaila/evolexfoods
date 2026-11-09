@@ -33,6 +33,7 @@ use App\Models\Supplier;
 use App\Models\Task;
 use App\Models\Treatment;
 use App\Models\User;
+use Database\Seeders\PipelineStageSeeder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -149,6 +150,10 @@ class CrudController extends Controller
 
     public function lookups(): JsonResponse
     {
+        if (! PipelineStage::exists()) {
+            app(PipelineStageSeeder::class)->run();
+        }
+
         return response()->json([
             'locations' => Location::orderBy('name')->get(['id', 'name', 'code']),
             'suppliers' => Supplier::orderBy('name')->get(['id', 'name', 'code']),
@@ -158,7 +163,9 @@ class CrudController extends Controller
             'assets' => Asset::orderBy('asset_id')->get(['id', 'asset_id', 'name']),
             'companies' => Company::orderBy('name')->get(['id', 'name']),
             'contacts' => Contact::with('company:id,name')->orderBy('name')->get(['id', 'name', 'company_id']),
-            'pipeline_stages' => PipelineStage::orderBy('sort_order')->get(['id', 'name']),
+            'pipeline_stages' => PipelineStage::whereNotIn('name', ['Qualified', 'Meeting', 'Sample', 'Quote'])
+                ->orderBy('sort_order')
+                ->get(['id', 'name']),
             'media_assets' => MediaAsset::orderByDesc('captured_at')->get(['id', 'title', 'type', 'captured_at']),
             'invoices' => Invoice::orderByDesc('invoice_date')->get(['id', 'invoice_number']),
         ]);
@@ -556,9 +563,10 @@ class CrudController extends Controller
             'contacts' => [
                 'model' => Contact::class,
                 'with' => ['company'],
-                'search' => ['name', 'email', 'phone', 'lifecycle_stage'],
+                'search' => ['name', 'company_name', 'email', 'phone', 'lifecycle_stage'],
                 'rules' => [
                     'company_id' => 'nullable|exists:companies,id',
+                    'company_name' => 'nullable|string|max:255',
                     'name' => 'required|string',
                     'email' => 'nullable|email',
                     'phone' => 'nullable|string',
@@ -569,9 +577,11 @@ class CrudController extends Controller
             'deals' => [
                 'model' => Deal::class,
                 'with' => ['company', 'contact', 'stage'],
-                'search' => ['name', 'status', 'next_action'],
+                'search' => ['name', 'company_name', 'contact_name', 'status', 'next_action'],
                 'rules' => [
                     'name' => 'required|string',
+                    'company_name' => 'nullable|string|max:255',
+                    'contact_name' => 'nullable|string|max:255',
                     'company_id' => 'nullable|exists:companies,id',
                     'contact_id' => 'nullable|exists:contacts,id',
                     'pipeline_stage_id' => 'nullable|exists:pipeline_stages,id',
@@ -608,6 +618,22 @@ class CrudController extends Controller
                     'published_at' => 'nullable|date',
                     'media_asset_id' => 'nullable|exists:media_assets,id',
                     'body' => 'nullable|string',
+                ],
+            ],
+            'media_assets' => [
+                'model' => MediaAsset::class,
+                'with' => [],
+                'search' => ['title', 'type', 'subject', 'location', 'rights'],
+                'rules' => [
+                    'title' => 'required|string|max:255',
+                    'type' => 'nullable|string|max:50',
+                    'location' => 'nullable|string|max:255',
+                    'subject' => 'nullable|string|max:255',
+                    'url' => 'nullable|string|max:2048',
+                    'tags' => 'nullable|array',
+                    'tags.*' => 'string|max:100',
+                    'captured_at' => 'nullable|date',
+                    'rights' => 'nullable|string|max:255',
                 ],
             ],
             'campaigns' => [

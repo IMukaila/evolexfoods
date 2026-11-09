@@ -2089,7 +2089,7 @@ export const CRUD_RESOURCES: Record<string, ResourceDef> = {
     subtitle: 'People and buyer-side decision makers linked to company accounts.',
     columns: [
       { key: 'name', label: 'Contact' },
-      { key: 'company', label: 'Company', render: (row) => row.company?.name || '-' },
+      { key: 'company', label: 'Company', render: (row) => row.company_name || row.company?.name || '-' },
       { key: 'role', label: 'Role' },
       { key: 'email', label: 'Email' },
       { key: 'phone', label: 'Phone' },
@@ -2097,7 +2097,7 @@ export const CRUD_RESOURCES: Record<string, ResourceDef> = {
     ],
     fields: [
       { key: 'name', label: 'Contact name', type: 'text', required: true },
-      { key: 'company_id', label: 'Company', type: 'select', lookup: 'companies' },
+      { key: 'company_name', label: 'Company', type: 'text' },
       { key: 'role', label: 'Role / title', type: 'text' },
       { key: 'email', label: 'Email', type: 'email' },
       { key: 'phone', label: 'Phone', type: 'text' },
@@ -2114,7 +2114,9 @@ export const CRUD_RESOURCES: Record<string, ResourceDef> = {
       { id: 'customers', label: 'Customers', badgeClass: 'ok', filterFn: (row) => row.lifecycle_stage === 'customer' }
     ],
     advancedFilters: [
-      { key: 'company_id', label: 'Company', type: 'select', lookup: 'companies' },
+      { key: 'company_name', label: 'Company', type: 'text', filterFn: (row, value) =>
+        String(row.company_name || row.company?.name || '').toLowerCase().includes(String(value).toLowerCase())
+      },
       { key: 'lifecycle_stage', label: 'Lifecycle stage', type: 'select', options: [
         { value: 'lead', label: 'Lead' }, { value: 'prospect', label: 'Prospect' },
         { value: 'customer', label: 'Customer' }, { value: 'subscriber', label: 'Subscriber' }
@@ -2141,8 +2143,8 @@ export const CRUD_RESOURCES: Record<string, ResourceDef> = {
     subtitle: 'Manage buyer opportunities, pipeline stages and next actions.',
     columns: [
       { key: 'name', label: 'Deal' },
-      { key: 'company', label: 'Company', render: (row) => row.company?.name || '-' },
-      { key: 'contact', label: 'Contact', render: (row) => row.contact?.name || '-' },
+      { key: 'company', label: 'Company', render: (row) => row.company_name || row.company?.name || '-' },
+      { key: 'contact', label: 'Contact', render: (row) => row.contact_name || row.contact?.name || '-' },
       { key: 'stage', label: 'Pipeline stage', render: (row) => row.stage?.name || '-' },
       { key: 'amount', label: 'Amount', render: (row) => row.amount === null || row.amount === undefined ? '-' : Number(row.amount).toLocaleString() },
       { key: 'close_date', label: 'Expected close' },
@@ -2151,8 +2153,8 @@ export const CRUD_RESOURCES: Record<string, ResourceDef> = {
     ],
     fields: [
       { key: 'name', label: 'Deal name', type: 'text', required: true },
-      { key: 'company_id', label: 'Company', type: 'select', lookup: 'companies' },
-      { key: 'contact_id', label: 'Primary contact', type: 'select', lookup: 'contacts' },
+      { key: 'company_name', label: 'Company', type: 'text' },
+      { key: 'contact_name', label: 'Primary contact', type: 'text' },
       { key: 'pipeline_stage_id', label: 'Pipeline stage', type: 'select', lookup: 'pipeline_stages' },
       { key: 'amount', label: 'Deal value', type: 'number' },
       { key: 'close_date', label: 'Expected close date', type: 'date' },
@@ -2174,7 +2176,12 @@ export const CRUD_RESOURCES: Record<string, ResourceDef> = {
       { key: 'status', label: 'Status', type: 'select', options: [
         { value: 'open', label: 'Open' }, { value: 'won', label: 'Won' }, { value: 'lost', label: 'Lost' }
       ]},
-      { key: 'company_id', label: 'Company', type: 'select', lookup: 'companies' },
+      { key: 'company_name', label: 'Company', type: 'text', filterFn: (row, value) =>
+        String(row.company_name || row.company?.name || '').toLowerCase().includes(String(value).toLowerCase())
+      },
+      { key: 'contact_name', label: 'Primary contact', type: 'text', filterFn: (row, value) =>
+        String(row.contact_name || row.contact?.name || '').toLowerCase().includes(String(value).toLowerCase())
+      },
       { key: 'pipeline_stage_id', label: 'Pipeline stage', type: 'select', lookup: 'pipeline_stages' },
       { key: 'close_from', label: 'Close date from', type: 'date', filterFn: (row, value) => !!row.close_date && String(row.close_date).slice(0, 10) >= String(value) },
       { key: 'close_to', label: 'Close date to', type: 'date', filterFn: (row, value) => !!row.close_date && String(row.close_date).slice(0, 10) <= String(value) },
@@ -2334,6 +2341,35 @@ export const CRUD_RESOURCES: Record<string, ResourceDef> = {
         label: 'Published',
         compute: (rows) => ({ label: 'Published', value: rows.filter((row) => row.status === 'published').length, meta: 'Published items in view', ok: true })
       }
+    ]
+  },
+  media_assets: {
+    title: 'Media Library',
+    recordLabel: 'media asset',
+    subtitle: 'Keep reusable photos, videos and other campaign media available for content items.',
+    columns: [
+      { key: 'title', label: 'Title' },
+      { key: 'type', label: 'Type' },
+      { key: 'subject', label: 'Subject' },
+      { key: 'captured_at', label: 'Captured' },
+      { key: 'rights', label: 'Rights' },
+      { key: 'url', label: 'Media link' }
+    ],
+    fields: [
+      { key: 'title', label: 'Title', type: 'text', required: true },
+      { key: 'type', label: 'Type', type: 'select', options: [
+        { value: 'photo', label: 'Photo' }, { value: 'video', label: 'Video' },
+        { value: 'audio', label: 'Audio' }, { value: 'design', label: 'Design' },
+        { value: 'document', label: 'Document' }, { value: 'other', label: 'Other' }
+      ]},
+      { key: 'subject', label: 'Subject', type: 'text' },
+      { key: 'location', label: 'Location', type: 'text' },
+      { key: 'url', label: 'Media URL or file path', type: 'text' },
+      { key: 'captured_at', label: 'Captured on', type: 'date' },
+      { key: 'rights', label: 'Usage rights', type: 'text' }
+    ],
+    quickFilters: [
+      { id: 'all', label: 'All media', filterFn: () => true }
     ]
   },
   campaigns: {

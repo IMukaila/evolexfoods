@@ -113,6 +113,7 @@ export class ShellComponent implements OnInit, OnDestroy {
         { path: '/sales', label: 'Sales & Culls', icon: 'deals', permission: 'sales.view' },
         { path: '/campaigns', label: 'Campaigns', icon: 'marketing', permission: 'campaigns.view' },
         { path: '/marketing', label: 'Content Calendar', icon: 'marketing', permission: 'marketing.view' },
+        { path: '/media-assets', label: 'Media Library', icon: 'marketing', permission: 'marketing.view' },
         { path: '/marketing/performance', label: 'Channel Performance', icon: 'marketing', permission: 'marketing.view' }
       ]
     },

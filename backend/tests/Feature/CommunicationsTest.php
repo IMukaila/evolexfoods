@@ -72,6 +72,37 @@ class CommunicationsTest extends TestCase
         $this->putJson('/api/v1/settings', ['email' => ['mail_mailer' => 'mailgun']])->assertUnprocessable();
     }
 
+    public function test_system_settings_can_be_saved_across_all_settings_groups(): void
+    {
+        $this->putJson('/api/v1/settings', [
+            'general' => ['company_name' => 'Updated Evolex'],
+            'notifications' => ['alert_sick_animals' => false],
+            'livestock' => ['id_prefix_goat' => 'GOAT'],
+            'integrations' => ['google_workspace_domain' => 'updated.example'],
+            'security' => ['session_lifetime_minutes' => 180],
+        ])->assertOk()
+            ->assertJsonPath('settings.general.company_name', 'Updated Evolex')
+            ->assertJsonPath('settings.notifications.alert_sick_animals', false)
+            ->assertJsonPath('settings.livestock.id_prefix_goat', 'GOAT')
+            ->assertJsonPath('settings.integrations.google_workspace_domain', 'updated.example')
+            ->assertJsonPath('settings.security.session_lifetime_minutes', 180);
+    }
+
+    public function test_system_settings_are_initialized_and_can_be_saved_without_preseeded_settings(): void
+    {
+        Setting::query()->delete();
+
+        $this->getJson('/api/v1/settings')->assertOk()
+            ->assertJsonPath('settings.general.company_name', 'Evolex Food Ltd');
+
+        Setting::query()->delete();
+
+        $this->putJson('/api/v1/settings', [
+            'general' => ['company_name' => 'First Save'],
+        ])->assertOk()
+            ->assertJsonPath('settings.general.company_name', 'First Save');
+    }
+
     public function test_ordinary_staff_cannot_access_settings_templates_or_send_messages(): void
     {
         $this->actingAs(User::factory()->create(['role' => 'farm_employee', 'status' => 'active']));

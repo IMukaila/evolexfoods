@@ -92,6 +92,10 @@
                 <option *ngFor="let opt of optionsFor(field)" [ngValue]="opt.value">{{ opt.label }}</option>
               </select>
 
+              <p class="muted" *ngIf="field.key === 'media_asset_id' && !optionsFor(field).length">
+                No media assets are available yet. <a routerLink="/media-assets">Add one in the Media Library</a>.
+              </p>
+
               <input *ngIf="field.type !== 'textarea' && field.type !== 'select'"
                 [id]="'field_' + field.key"
                 [type]="field.type"

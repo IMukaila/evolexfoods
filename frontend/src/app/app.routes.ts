@@ -46,6 +46,7 @@ export const routes: Routes = [
       { path: 'deals', component: CrudPageComponent, data: { resource: 'deals' } },
       { path: 'sales', component: CrudPageComponent, data: { resource: 'sales' } },
       { path: 'campaigns', component: CrudPageComponent, data: { resource: 'campaigns' } },
+      { path: 'media-assets', component: CrudPageComponent, data: { resource: 'media_assets' } },
       { path: 'marketing/performance', component: CrudPageComponent, data: { resource: 'channel_metrics' } },
       { path: 'marketing', pathMatch: 'full', component: CrudPageComponent, data: { resource: 'marketing' } },
       { path: 'governance', pathMatch: 'full', redirectTo: 'risks' },

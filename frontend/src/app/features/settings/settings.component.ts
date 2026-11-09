@@ -498,7 +498,13 @@ export class SettingsComponent implements OnInit {
       error: (err) => {
         this.saving = false;
         console.error('Failed to update settings:', err);
-        this.showToastMsg('error', 'Failed to save settings. Please verify inputs.');
+        const validationMessage = Object.values(err?.error?.errors ?? {})
+          .flat()
+          .find((message): message is string => typeof message === 'string');
+        this.showToastMsg(
+          'error',
+          validationMessage || err?.error?.message || 'Failed to save settings. Please verify inputs.'
+        );
       }
     });
   }

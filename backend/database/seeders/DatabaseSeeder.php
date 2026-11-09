@@ -55,8 +55,11 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        $this->call(SettingSeeder::class);
+        $this->call(LocationSeeder::class);
+
         $users = collect([
-            ['name' => 'Amara Okoye', 'email' => 'owner@evolex.com', 'role' => 'owner', 'department' => 'Ownership'],
+            ['name' => 'Inusah Mukaila', 'email' => 'owner@evolex.com', 'role' => 'owner', 'department' => 'Ownership'],
             ['name' => 'Daniel Mensah', 'email' => 'executive@evolex.com', 'role' => 'executive', 'department' => 'Executive'],
             ['name' => 'Nia Boateng', 'email' => 'ops@evolex.com', 'role' => 'operations_manager', 'department' => 'Business Operations'],
             ['name' => 'Kwame Asante', 'email' => 'farm@evolex.com', 'role' => 'farm_manager', 'department' => 'Farm'],
@@ -82,13 +85,7 @@ class DatabaseSeeder extends Seeder
         $vet = $users->firstWhere('email', 'vet@evolex.com');
         $proc = $users->firstWhere('email', 'procurement@evolex.com');
 
-        $locations = collect([
-            ['code' => 'PAD-A', 'name' => 'North Paddock', 'type' => 'paddock', 'capacity' => 80],
-            ['code' => 'PAD-B', 'name' => 'South Paddock', 'type' => 'paddock', 'capacity' => 70],
-            ['code' => 'PAD-C', 'name' => 'River Field', 'type' => 'paddock', 'capacity' => 60],
-            ['code' => 'BRN-1', 'name' => 'Maternity Barn', 'type' => 'barn', 'capacity' => 20],
-            ['code' => 'QRN-1', 'name' => 'Quarantine Pen', 'type' => 'pen', 'capacity' => 12],
-        ])->map(fn ($row) => Location::create($row + ['status' => 'active', 'address' => 'Evolex Farm, Greater Accra']));
+        $locations = Location::orderBy('id')->get();
 
         $employees = $users->map(fn ($user, $i) => Employee::create([
             'user_id' => $user->id,

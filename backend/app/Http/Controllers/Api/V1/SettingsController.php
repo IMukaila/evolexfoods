@@ -7,6 +7,7 @@ use App\Models\Animal;
 use App\Models\AuditLog;
 use App\Models\Setting;
 use App\Models\User;
+use Database\Seeders\SettingSeeder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
@@ -20,6 +21,7 @@ class SettingsController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
+        $this->ensureDefaultSettings();
         $grouped = Setting::getAllGrouped();
 
         // System diagnostics and metadata
@@ -49,6 +51,7 @@ class SettingsController extends Controller
      */
     public function update(Request $request): JsonResponse
     {
+        $this->ensureDefaultSettings();
         $payload = \App\Services\CommunicationSettings::validate($request->all());
         $updatedCount = 0;
 
@@ -464,6 +467,13 @@ class SettingsController extends Controller
             return 'C:/sqlite/database.sqlite';
         }
         return $path ?: database_path('database.sqlite');
+    }
+
+    private function ensureDefaultSettings(): void
+    {
+        if (! Setting::where('key', 'company_name')->exists()) {
+            app(SettingSeeder::class)->run();
+        }
     }
 
     private function getBackupsDirectory(): string

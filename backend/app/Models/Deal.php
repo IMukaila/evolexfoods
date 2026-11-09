@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Deal extends Model
 {
     protected $fillable = [
-        'name', 'company_id', 'contact_id', 'pipeline_stage_id', 'amount',
+        'name', 'company_name', 'contact_name', 'company_id', 'contact_id', 'pipeline_stage_id', 'amount',
         'close_date', 'next_action', 'next_action_date', 'hubspot_id', 'status',
     ];
 

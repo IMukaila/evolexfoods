@@ -215,6 +215,19 @@ class LivestockController extends Controller
 
     public function deaths(Request $request): JsonResponse
     {
+        $hasDateRange = $request->hasAny(['from', 'to']);
+
+        if (! $hasDateRange) {
+            $query = Death::with('animal')->orderByDesc('death_date');
+
+            return response()->json([
+                'question' => 7,
+                'count' => $query->count(),
+                'records' => $query->get(),
+                'source' => 'deaths',
+            ]);
+        }
+
         [$from, $to] = DateRange::fromRequest($request);
 
         $query = Death::with('animal')->whereBetween('death_date', [$from, $to]);

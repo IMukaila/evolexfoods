@@ -14,7 +14,7 @@ class DemoUsersSeeder extends Seeder
     public function run(): void
     {
         $users = [
-            ['name' => 'Amara Okoye', 'email' => 'owner@evolex.com', 'role' => 'owner', 'department' => 'Ownership'],
+            ['name' => 'Inusah Mukaila', 'email' => 'owner@evolex.com', 'role' => 'owner', 'department' => 'Ownership'],
             ['name' => 'Daniel Mensah', 'email' => 'executive@evolex.com', 'role' => 'executive', 'department' => 'Executive'],
             ['name' => 'Nia Boateng', 'email' => 'ops@evolex.com', 'role' => 'operations_manager', 'department' => 'Business Operations'],
             ['name' => 'Kwame Asante', 'email' => 'farm@evolex.com', 'role' => 'farm_manager', 'department' => 'Farm'],
@@ -40,5 +40,7 @@ class DemoUsersSeeder extends Seeder
                 ]
             );
         }
+        User::where('email', 'owner@evolex.com')->update(['name' => 'Inusah Mukaila']);
+
     }
 }

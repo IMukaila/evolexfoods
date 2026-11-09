@@ -57,7 +57,7 @@ export class KiddingRadarComponent implements OnInit {
     this.state.set('loading');
     this.errorMessage.set('');
     this.api
-      .get<GestationRadar>('/livestock/gestation-radar')
+      .get<GestationRadar>('/livestock/gestation-radar', { _refresh: Date.now() })
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (payload) => {
