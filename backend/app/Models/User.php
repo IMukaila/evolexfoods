@@ -60,7 +60,6 @@ class User extends Authenticatable
             'two_factor_enabled'         => 'boolean',
             'two_factor_recovery_codes'  => 'array',
             'two_factor_trusted_tokens'  => 'array',
-            'password'                   => 'hashed',
         ];
     }
 

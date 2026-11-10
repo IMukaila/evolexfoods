@@ -177,15 +177,8 @@ export class ShellComponent implements OnInit, OnDestroy {
   }
 
   checkTwoFactorStatus(): void {
-    if (this.auth.user && !this.auth.user.two_factor_enabled) {
-      this.showTwoFactorModal = true;
-      this.shellActivationStep = 'select-method';
-      this.shellSelectedMethod = 'totp';
-      this.shellOtpSent = false;
-      this.twoFactorActivationCode = '';
-      this.twoFactorError = '';
-      this.loadTwoFactorSetup();
-    }
+    // 2FA activation is voluntary from Settings -> Security, never forced
+    this.showTwoFactorModal = false;
   }
 
   loadTwoFactorSetup(): void {
