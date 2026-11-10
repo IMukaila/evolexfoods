@@ -7,6 +7,20 @@ const app = express();
 const PORT = process.env.PORT || 4200;
 const BACKEND_URL = process.env.BACKEND_URL || 'https://api.evolexfoods.com';
 
+// Trust reverse proxy (Railway edge)
+app.set('trust proxy', 1);
+
+// Security & HTTPS enforcement middleware
+app.use((req, res, next) => {
+  if (req.headers['x-forwarded-proto'] === 'http') {
+    return res.redirect(301, 'https://' + req.headers.host + req.url);
+  }
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  next();
+});
+
 // Proxy /api requests to backend so frontend has zero CORS issues
 app.use('/api', (req, res) => {
   try {
