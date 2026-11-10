@@ -244,17 +244,17 @@ export class SettingsComponent implements OnInit {
     },
     email: {
       mail_mailer: 'smtp',
-      mail_host: 'smtp.googlemail.com',
-      mail_port: 587,
-      mail_username: 'alerts@evolexfood.com',
+      mail_host: 'smtp.gmail.com',
+      mail_port: 465,
+      mail_username: 'evolexfoods@gmail.com',
       mail_password: '',
-      mail_encryption: 'tls',
-      mail_from_address: 'alerts@evolexfood.com',
+      mail_encryption: 'ssl',
+      mail_from_address: 'evolexfoods@gmail.com',
       mail_from_name: 'Evolex Operations Hub',
-      mail_reply_to: 'operations@evolexfood.com',
+      mail_reply_to: 'evolexfoods@gmail.com',
       smtp_auth: true,
       send_welcome_email: true,
-      email_footer_text: 'Sent automatically by Evolex Digital Operations Platform. For operational queries contact operations@evolexfood.com.'
+      email_footer_text: 'Sent automatically by Evolex Digital Operations Platform. For operational queries contact evolexfoods@gmail.com.'
     },
     notifications: {
       alert_sick_animals: true,

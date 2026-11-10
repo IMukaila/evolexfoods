@@ -32,17 +32,17 @@ class SettingSeeder extends Seeder
 
             // Email & SMTP Settings
             ['group' => 'email', 'key' => 'mail_mailer', 'value' => 'smtp', 'type' => 'string', 'description' => 'Mail protocol or driver'],
-            ['group' => 'email', 'key' => 'mail_host', 'value' => 'smtp.googlemail.com', 'type' => 'string', 'description' => 'SMTP host server address'],
-            ['group' => 'email', 'key' => 'mail_port', 'value' => '587', 'type' => 'integer', 'description' => 'SMTP server communication port'],
-            ['group' => 'email', 'key' => 'mail_username', 'value' => 'alerts@evolexfood.com', 'type' => 'string', 'description' => 'SMTP authentication username'],
+            ['group' => 'email', 'key' => 'mail_host', 'value' => 'smtp.gmail.com', 'type' => 'string', 'description' => 'SMTP host server address'],
+            ['group' => 'email', 'key' => 'mail_port', 'value' => '465', 'type' => 'integer', 'description' => 'SMTP server communication port'],
+            ['group' => 'email', 'key' => 'mail_username', 'value' => 'evolexfoods@gmail.com', 'type' => 'string', 'description' => 'SMTP authentication username'],
             ['group' => 'email', 'key' => 'mail_password', 'value' => '', 'type' => 'string', 'description' => 'SMTP account password / app password'],
-            ['group' => 'email', 'key' => 'mail_encryption', 'value' => 'tls', 'type' => 'string', 'description' => 'Encryption protocol (tls, ssl, or none)'],
-            ['group' => 'email', 'key' => 'mail_from_address', 'value' => 'alerts@evolexfood.com', 'type' => 'string', 'description' => 'Default sender email address'],
+            ['group' => 'email', 'key' => 'mail_encryption', 'value' => 'ssl', 'type' => 'string', 'description' => 'Encryption protocol (tls, ssl, or none)'],
+            ['group' => 'email', 'key' => 'mail_from_address', 'value' => 'evolexfoods@gmail.com', 'type' => 'string', 'description' => 'Default sender email address'],
             ['group' => 'email', 'key' => 'mail_from_name', 'value' => 'Evolex Operations Hub', 'type' => 'string', 'description' => 'Default sender display name'],
-            ['group' => 'email', 'key' => 'mail_reply_to', 'value' => 'operations@evolexfood.com', 'type' => 'string', 'description' => 'Reply-to email destination'],
+            ['group' => 'email', 'key' => 'mail_reply_to', 'value' => 'evolexfoods@gmail.com', 'type' => 'string', 'description' => 'Reply-to email destination'],
             ['group' => 'email', 'key' => 'smtp_auth', 'value' => '1', 'type' => 'boolean', 'description' => 'Require SMTP server authentication'],
             ['group' => 'email', 'key' => 'send_welcome_email', 'value' => '1', 'type' => 'boolean', 'description' => 'Dispatch onboarding email upon new staff creation'],
-            ['group' => 'email', 'key' => 'email_footer_text', 'value' => 'Sent automatically by Evolex Digital Operations Platform. For operational queries contact operations@evolexfood.com.', 'type' => 'string', 'description' => 'Standard compliance footer for outbound system emails'],
+            ['group' => 'email', 'key' => 'email_footer_text', 'value' => 'Sent automatically by Evolex Digital Operations Platform. For operational queries contact evolexfoods@gmail.com.', 'type' => 'string', 'description' => 'Standard compliance footer for outbound system emails'],
 
             // Notifications & Alert Triggers
             ['group' => 'notifications', 'key' => 'alert_sick_animals', 'value' => '1', 'type' => 'boolean', 'description' => 'Trigger immediate alert when sick animal is flagged'],

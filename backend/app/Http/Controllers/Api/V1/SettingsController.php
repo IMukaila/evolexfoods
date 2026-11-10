@@ -101,9 +101,14 @@ class SettingsController extends Controller
                 'This is a real test of your saved Evolex Hub email configuration. No action is required.'
             );
         } catch (\Throwable $e) {
+            Log::error('SettingsController@testEmail error: ' . $e->getMessage(), [
+                'recipient' => $recipient,
+                'exception' => $e,
+            ]);
             return response()->json([
                 'success' => false,
-                'message' => 'Email acceptance not confirmed. Check saved SMTP host, port, encryption, credentials and sender. A timeout may still have been accepted; check the mailbox before retrying.',
+                'message' => 'Email test failed: ' . $e->getMessage(),
+                'error' => $e->getMessage(),
             ], 502);
         }
         AuditLog::create([
