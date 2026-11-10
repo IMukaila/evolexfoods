@@ -30,6 +30,19 @@ app.use('/api', (req, res) => {
     const headers = { ...req.headers, host: targetUrl.host };
     delete headers['content-length'];
 
+    // Strip Cloudflare & proxy-loop headers to prevent Cloudflare Error 1000 (dns_loop)
+    for (const key of Object.keys(headers)) {
+      if (
+        key.startsWith('cf-') ||
+        key === 'cdn-loop' ||
+        key === 'x-forwarded-for' ||
+        key === 'x-forwarded-proto' ||
+        key === 'x-real-ip'
+      ) {
+        delete headers[key];
+      }
+    }
+
     const proxyReq = client.request(
       targetUrl,
       {
