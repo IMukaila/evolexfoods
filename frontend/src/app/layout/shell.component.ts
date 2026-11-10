@@ -87,6 +87,7 @@ export class ShellComponent implements OnInit, OnDestroy {
       expanded: false,
       items: [
         { path: '/hr', label: 'People', icon: 'people', permission: 'hr.view' },
+        { path: '/users', label: 'User Accounts', icon: 'settings', permission: 'settings.manage_roles' },
         { path: '/tasks', label: 'Tasks', icon: 'tasks', permission: 'tasks.view' }
       ]
     },

@@ -1,0 +1,294 @@
+<div class="page">
+  <!-- ── Page Header ─────────────────────────────────────────────────── -->
+  <div class="page-head">
+    <div>
+      <h1>USER ACCOUNTS</h1>
+      <p class="muted">Manage system users, roles, and passwords</p>
+    </div>
+    <div class="head-actions">
+      <button class="btn-change-pw" (click)="openChangePassword()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+        Change My Password
+      </button>
+      <button class="btn-add" *ngIf="isPrivileged" (click)="openCreate()">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add User
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Toolbar ────────────────────────────────────────────────────── -->
+  <div class="toolbar">
+    <div class="search-wrapper">
+      <svg class="search-icon" viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input type="text" placeholder="Search users…" [(ngModel)]="search" (input)="onSearch()" class="search-input" />
+    </div>
+    <select [(ngModel)]="statusFilter" (change)="onSearch()" class="filter-select">
+      <option value="">All Statuses</option>
+      <option value="active">Active</option>
+      <option value="inactive">Inactive</option>
+      <option value="suspended">Suspended</option>
+    </select>
+  </div>
+
+  <!-- ── Users Table ────────────────────────────────────────────────── -->
+  <div class="table-wrap">
+    <table class="users-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Role</th>
+          <th>Department</th>
+          <th>Phone</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let u of users">
+          <td class="td-name">
+            <div class="avatar">{{ u.name.charAt(0).toUpperCase() }}</div>
+            <span>{{ u.name }}</span>
+          </td>
+          <td>{{ u.email }}</td>
+          <td>
+            <span class="role-pill">{{ u.role_name || u.role }}</span>
+          </td>
+          <td>{{ u.department || '—' }}</td>
+          <td>{{ u.phone || '—' }}</td>
+          <td><span class="badge" [ngClass]="statusBadge(u.status)">{{ u.status }}</span></td>
+          <td class="td-actions">
+            <button class="btn-icon" title="Edit" *ngIf="isPrivileged" (click)="openEdit(u)">
+              <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+            <button class="btn-icon btn-icon--warning" title="Reset Password" *ngIf="isPrivileged" (click)="openResetPassword(u)">
+              <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </button>
+            <button class="btn-icon btn-icon--danger" title="Delete" *ngIf="isPrivileged && u.id !== me?.id" (click)="deleteUser(u)">
+              <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+            </button>
+          </td>
+        </tr>
+        <tr *ngIf="users.length === 0">
+          <td colspan="7" class="empty-row">No users found.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── Pagination ─────────────────────────────────────────────────── -->
+  <div class="pagination" *ngIf="totalPages > 1">
+    <button [disabled]="currentPage === 1" (click)="changePage(currentPage - 1)">‹</button>
+    <button *ngFor="let p of pages"
+            [class.active]="p === currentPage"
+            (click)="changePage(p)">{{ p }}</button>
+    <button [disabled]="currentPage === totalPages" (click)="changePage(currentPage + 1)">›</button>
+    <span class="page-info">{{ totalItems }} users</span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     CREATE / EDIT MODAL
+══════════════════════════════════════════════════════════════════════ -->
+<div class="modal-backdrop" *ngIf="modalMode === 'create' || modalMode === 'edit'">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>{{ modalMode === 'create' ? 'Add New User' : 'Edit User' }}</h2>
+      <button class="modal-close" (click)="closeModal()">✕</button>
+    </div>
+
+    <!-- Password shown after create -->
+    <div class="password-reveal-banner" *ngIf="createdPassword">
+      <div class="reveal-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      </div>
+      <div class="reveal-body">
+        <strong>✅ User "{{ createdUserName }}" created!</strong>
+        <p>Save this password now — it will <em>not</em> be shown again:</p>
+        <div class="reveal-pw-row">
+          <code class="reveal-pw">{{ createdPassword }}</code>
+          <button class="btn-copy" (click)="copyPassword(createdPassword)">
+            {{ passwordCopied ? '✓ Copied' : 'Copy' }}
+          </button>
+        </div>
+      </div>
+      <button class="btn-done" (click)="closeModal()">Done</button>
+    </div>
+
+    <!-- Form (hidden once password shown) -->
+    <div class="modal-body" *ngIf="!createdPassword">
+      <p class="form-error" *ngIf="formError">{{ formError }}</p>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Full Name *</label>
+          <input type="text" [(ngModel)]="form.name" placeholder="e.g. Aisha Bello" class="form-control" />
+        </div>
+        <div class="form-group">
+          <label>Email Address *</label>
+          <input type="email" [(ngModel)]="form.email" placeholder="user@evolexfoods.com" class="form-control" />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>System Role *</label>
+          <select [(ngModel)]="form.role" class="form-control">
+            <option value="owner">Owner</option>
+            <option value="administrator">Administrator</option>
+            <option value="operations_manager">Operations Manager</option>
+            <option value="farm_manager">Farm Manager</option>
+            <option value="finance_officer">Finance Officer</option>
+            <option value="marketing_officer">Marketing Officer</option>
+            <option value="sales_rep">Sales Rep</option>
+            <option value="farm_employee">Farm Employee</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Permission Role</label>
+          <select [(ngModel)]="form.role_id" class="form-control">
+            <option [ngValue]="null">— None —</option>
+            <option *ngFor="let r of roles" [ngValue]="r.id">{{ r.name }}</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Department</label>
+          <input type="text" [(ngModel)]="form.department" placeholder="e.g. Operations" class="form-control" />
+        </div>
+        <div class="form-group">
+          <label>Phone</label>
+          <input type="text" [(ngModel)]="form.phone" placeholder="+234 …" class="form-control" />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Status</label>
+          <select [(ngModel)]="form.status" class="form-control">
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="suspended">Suspended</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>
+            {{ modalMode === 'create' ? 'Custom Password' : 'New Password' }}
+            <span class="label-hint">{{ modalMode === 'create' ? '(leave blank to auto-generate)' : '(leave blank to keep current)' }}</span>
+          </label>
+          <input type="text" [(ngModel)]="form.password" placeholder="Min 8 characters" class="form-control" autocomplete="new-password" />
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-cancel" (click)="closeModal()">Cancel</button>
+        <button class="btn-save" (click)="save()" [disabled]="saving">
+          <span *ngIf="saving" class="spinner-sm"></span>
+          {{ saving ? 'Saving…' : (modalMode === 'create' ? 'Create User' : 'Save Changes') }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     RESET PASSWORD MODAL
+══════════════════════════════════════════════════════════════════════ -->
+<div class="modal-backdrop" *ngIf="modalMode === 'reset-confirm'">
+  <div class="modal modal--sm">
+    <div class="modal-header">
+      <h2>Reset Password</h2>
+      <button class="modal-close" (click)="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- Before reset -->
+      <ng-container *ngIf="!resetPassword">
+        <p>Generate a new random password for <strong>{{ resetTargetName }}</strong>?</p>
+        <p class="hint-text">Their current sessions will be ended. The new password will be shown once — save it immediately.</p>
+        <div class="modal-footer">
+          <button class="btn-cancel" (click)="closeModal()">Cancel</button>
+          <button class="btn-save btn-warn" (click)="confirmReset()" [disabled]="resettingPassword">
+            <span *ngIf="resettingPassword" class="spinner-sm"></span>
+            {{ resettingPassword ? 'Resetting…' : 'Yes, Reset Password' }}
+          </button>
+        </div>
+      </ng-container>
+
+      <!-- After reset — show new password -->
+      <ng-container *ngIf="resetPassword">
+        <div class="password-reveal-banner">
+          <div class="reveal-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          </div>
+          <div class="reveal-body">
+            <strong>Password reset for {{ resetTargetName }}</strong>
+            <p>Share this password securely — it will <em>not</em> be shown again:</p>
+            <div class="reveal-pw-row">
+              <code class="reveal-pw">{{ resetPassword }}</code>
+              <button class="btn-copy" (click)="copyPassword(resetPassword)">
+                {{ passwordCopied ? '✓ Copied' : 'Copy' }}
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-save" (click)="closeModal()">Done</button>
+        </div>
+      </ng-container>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     CHANGE MY PASSWORD MODAL
+══════════════════════════════════════════════════════════════════════ -->
+<div class="modal-backdrop" *ngIf="modalMode === 'change-password'">
+  <div class="modal modal--sm">
+    <div class="modal-header">
+      <h2>Change My Password</h2>
+      <button class="modal-close" (click)="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="success-banner" *ngIf="cpSuccess">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        {{ cpSuccess }}
+      </div>
+
+      <ng-container *ngIf="!cpSuccess">
+        <p class="form-error" *ngIf="cpError">{{ cpError }}</p>
+
+        <div class="form-group">
+          <label>Current Password</label>
+          <input type="password" [(ngModel)]="cpCurrentPassword" placeholder="Your current password" class="form-control" autocomplete="current-password" />
+        </div>
+        <div class="form-group">
+          <label>New Password</label>
+          <input type="password" [(ngModel)]="cpNewPassword" placeholder="Min 8 characters" class="form-control" autocomplete="new-password" />
+        </div>
+        <div class="form-group">
+          <label>Confirm New Password</label>
+          <input type="password" [(ngModel)]="cpConfirm" placeholder="Repeat new password" class="form-control" autocomplete="new-password" />
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn-cancel" (click)="closeModal()">Cancel</button>
+          <button class="btn-save" (click)="submitChangePassword()" [disabled]="cpSaving">
+            <span *ngIf="cpSaving" class="spinner-sm"></span>
+            {{ cpSaving ? 'Saving…' : 'Update Password' }}
+          </button>
+        </div>
+      </ng-container>
+    </div>
+  </div>
+</div>

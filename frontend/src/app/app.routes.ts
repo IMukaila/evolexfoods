@@ -57,7 +57,8 @@ export const routes: Routes = [
       { path: 'reports', loadComponent: () => import('./features/reports/reports.component').then((module) => module.ReportsComponent) },
       { path: 'help', loadComponent: () => import('./features/help/help.component').then((module) => module.HelpComponent) },
       { path: 'settings', loadComponent: () => import('./features/settings/settings.component').then((module) => module.SettingsComponent) },
-      { path: 'roles', loadComponent: () => import('./features/settings/role-management.component').then((module) => module.RoleManagementComponent) }
+      { path: 'roles', loadComponent: () => import('./features/settings/role-management.component').then((module) => module.RoleManagementComponent) },
+      { path: 'users', loadComponent: () => import('./features/users/user-management.component').then((m) => m.UserManagementComponent) }
     ]
   },
   { path: '**', redirectTo: 'ceo' }

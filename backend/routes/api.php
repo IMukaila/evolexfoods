@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\V1\ProcurementController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\RoleController;
 use App\Http\Controllers\Api\V1\SettingsController;
+use App\Http\Controllers\Api\V1\UserController;
 use Illuminate\Support\Facades\Route;
 
 // Railway health check — no auth required
@@ -161,6 +162,15 @@ Route::prefix('v1')->group(function () {
         Route::delete('/roles/{id}', [RoleController::class, 'destroy']);
         Route::get('/permissions', [RoleController::class, 'permissions']);
         Route::post('/roles/{id}/permissions', [RoleController::class, 'syncPermissions']);
+
+        // User Management
+        Route::get('/users', [UserController::class, 'index']);
+        Route::post('/users', [UserController::class, 'store']);
+        Route::get('/users/{id}', [UserController::class, 'show'])->whereNumber('id');
+        Route::put('/users/{id}', [UserController::class, 'update'])->whereNumber('id');
+        Route::delete('/users/{id}', [UserController::class, 'destroy'])->whereNumber('id');
+        Route::post('/users/{id}/reset-password', [UserController::class, 'resetPassword'])->whereNumber('id');
+        Route::post('/auth/change-password', [UserController::class, 'changePassword']);
 
         Route::get('/lookups', [CrudController::class, 'lookups']);
         Route::get('/records/{resource}', [CrudController::class, 'index']);
