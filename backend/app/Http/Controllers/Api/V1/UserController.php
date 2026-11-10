@@ -114,14 +114,20 @@ class UserController extends Controller
         $user = User::findOrFail($id);
 
         $validated = $request->validate([
-            'name'       => 'sometimes|string|max:255',
-            'email'      => ['sometimes', 'email', Rule::unique('users')->ignore($id)],
-            'role'       => 'nullable|string|max:100',
-            'role_id'    => 'nullable|exists:roles,id',
-            'phone'      => 'nullable|string|max:30',
-            'department' => 'nullable|string|max:100',
-            'status'     => 'nullable|in:active,inactive,suspended',
+            'name'               => 'sometimes|string|max:255',
+            'email'              => ['sometimes', 'email', Rule::unique('users')->ignore($id)],
+            'role'               => 'nullable|string|max:100',
+            'role_id'            => 'nullable|exists:roles,id',
+            'phone'              => 'nullable|string|max:30',
+            'department'         => 'nullable|string|max:100',
+            'status'             => 'nullable|in:active,inactive,suspended',
+            'two_factor_enabled' => 'nullable|boolean',
+            'password'           => 'nullable|string|min:6',
         ]);
+
+        if (!empty($validated['password'])) {
+            $validated['password'] = Hash::make($validated['password']);
+        }
 
         $user->update($validated);
 
