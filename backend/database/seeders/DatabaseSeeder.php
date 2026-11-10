@@ -57,6 +57,11 @@ class DatabaseSeeder extends Seeder
     {
         $this->call(SettingSeeder::class);
         $this->call(LocationSeeder::class);
+        $this->call(RolePermissionSeeder::class);
+
+        if (User::where('email', 'owner@evolex.com')->exists()) {
+            return;
+        }
 
         $users = collect([
             ['name' => 'Inusah Mukaila', 'email' => 'owner@evolex.com', 'role' => 'owner', 'department' => 'Ownership'],
@@ -866,5 +871,7 @@ class DatabaseSeeder extends Seeder
                 'recovery_process' => 'Admin account + documented recovery in Drive.',
             ]);
         }
+
+        $this->call(RolePermissionSeeder::class);
     }
 }
