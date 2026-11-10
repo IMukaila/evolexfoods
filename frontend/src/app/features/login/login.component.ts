@@ -15,13 +15,8 @@ type ActivationStep = 'select-method' | 'send-otp' | 'verify';
 })
 export class LoginComponent implements OnInit {
   // ─── Credentials ─────────────────────────────────────────────────────────
-  email = 'owner@evolex.com';
-  password = 'password';
-
-  accounts = [
-    'owner@evolex.com', 'executive@evolex.com', 'ops@evolex.com',
-    'farm@evolex.com',  'finance@evolex.com',   'marketing@evolex.com', 'sales@evolex.com'
-  ];
+  email = '';
+  password = '';
 
   // ─── Login flow ───────────────────────────────────────────────────────────
   step: 'credentials' | '2fa' = 'credentials';
@@ -58,11 +53,7 @@ export class LoginComponent implements OnInit {
 
   ngOnInit(): void {
     if (this.auth.isLoggedIn()) {
-      if (this.auth.user && !this.auth.user.two_factor_enabled) {
-        this.openActivationModal();
-      } else {
-        this.router.navigate(['/ceo']);
-      }
+      this.router.navigate(['/ceo']);
     }
   }
 
@@ -89,11 +80,7 @@ export class LoginComponent implements OnInit {
         }
 
         if (res.user) {
-          if (!res.user.two_factor_enabled) {
-            this.openActivationModal();
-          } else {
-            this.router.navigate(['/ceo']);
-          }
+          this.router.navigate(['/ceo']);
         }
       },
       error: (err) => {

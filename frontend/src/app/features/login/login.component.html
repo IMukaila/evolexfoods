@@ -8,13 +8,11 @@
       <p>Sign in to the livestock, operations and CEO command center.</p>
 
       <form (ngSubmit)="submit()">
-        <label for="email">Account</label>
-        <select id="email" [(ngModel)]="email" name="email">
-          <option *ngFor="let account of accounts" [value]="account">{{ account }}</option>
-        </select>
+        <label for="email">Email Address</label>
+        <input id="email" [(ngModel)]="email" name="email" type="email" placeholder="name@evolexfoods.com" required autocomplete="username" />
 
         <label for="password">Password</label>
-        <input id="password" [(ngModel)]="password" name="password" type="password" />
+        <input id="password" [(ngModel)]="password" name="password" type="password" placeholder="••••••••" autocomplete="current-password" />
 
         <p class="err" *ngIf="error">{{ error }}</p>
         <button class="btn" type="submit" [disabled]="loading">
@@ -22,7 +20,6 @@
           <span>{{ loading ? 'Signing In...' : 'Enter Hub' }}</span>
         </button>
       </form>
-      <p class="hint">Demo password for every role: <strong>password</strong></p>
     </ng-container>
 
     <!-- ════ STEP 2: 2FA CHALLENGE ═══════════════════════════════════════════ -->
