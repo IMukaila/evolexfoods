@@ -101,17 +101,15 @@ class TwoFactorService
         Log::info("[2FA EMAIL OTP] To: {$user->email} | Name: {$user->name} | OTP: {$otp} | Expires in 10 min");
 
         try {
-            Mail::raw(
+            app(OutboundMailService::class)->send(
+                $user->email,
+                "Your Evolex 2FA Code: {$otp}",
                 "Hi {$user->name},\n\n"
                 . "Your Evolex Food Hub verification code is:\n\n"
                 . "  {$otp}\n\n"
                 . "This code expires in 10 minutes.\n"
                 . "If you did not request this, please ignore this message.\n\n"
-                . "– Evolex Security Team",
-                function ($message) use ($user, $otp) {
-                    $message->to($user->email, $user->name)
-                            ->subject("Your Evolex 2FA Code: {$otp}");
-                }
+                . "– Evolex Security Team"
             );
         } catch (\Throwable $e) {
             Log::warning('[2FA EMAIL] Mail send failed: ' . $e->getMessage());

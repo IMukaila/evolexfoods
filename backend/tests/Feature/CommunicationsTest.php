@@ -23,6 +23,7 @@ class CommunicationsTest extends TestCase
     {
         parent::setUp();
         config(['app.key' => 'base64:'.base64_encode(str_repeat('a', 32))]);
+        $this->seed(\Database\Seeders\RolePermissionSeeder::class);
         $this->seed(SettingSeeder::class);
         $this->actingAs(User::factory()->create(['role' => 'owner', 'status' => 'active']));
         Http::preventStrayRequests();
@@ -245,5 +246,47 @@ class CommunicationsTest extends TestCase
         });
         $this->postJson('/api/v1/communications/messages', [...$this->payload($this->template('email')), 'recipient' => 'ama@example.com'])
             ->assertCreated()->assertJsonPath('status', 'accepted');
+    }
+
+    public function test_resend_mail_driver_posts_to_https_api_with_bearer_token(): void
+    {
+        Setting::set('mail_mailer', 'resend', 'email');
+        Setting::set('resend_api_key', 're_test_key_12345', 'email');
+        Setting::set('mail_from_address', 'notifications@evolexfoods.com', 'email');
+        Setting::set('mail_from_name', 'Evolex Operations', 'email');
+        Setting::set('mail_reply_to', 'support@evolexfoods.com', 'email');
+
+        Http::fake([
+            'https://api.resend.com/emails' => Http::response(['id' => 'resend_email_id_999'], 200),
+        ]);
+
+        $status = app(OutboundMailService::class)->send('recipient@example.com', 'Welcome to Evolex', 'Hello from Resend');
+        $this->assertSame('accepted', $status);
+
+        Http::assertSent(function ($request) {
+            return $request->url() === 'https://api.resend.com/emails'
+                && $request->hasHeader('Authorization', 'Bearer re_test_key_12345')
+                && $request['to'] === ['recipient@example.com']
+                && $request['subject'] === 'Welcome to Evolex'
+                && str_contains($request['text'], 'Hello from Resend')
+                && $request['from'] === 'Evolex Operations <notifications@evolexfoods.com>'
+                && $request['reply_to'] === 'support@evolexfoods.com';
+        });
+    }
+
+    public function test_resend_api_key_is_encrypted_and_redacted(): void
+    {
+        $this->putJson('/api/v1/settings', [
+            'email' => [
+                'mail_mailer' => 'resend',
+                'resend_api_key' => 're_secret_key_abc',
+            ],
+        ])->assertOk()
+            ->assertJsonPath('settings.email.mail_mailer', 'resend')
+            ->assertJsonPath('settings.email.resend_api_key', '')
+            ->assertJsonPath('settings.email.resend_api_key_configured', true);
+
+        $this->assertSame('re_secret_key_abc', Setting::get('resend_api_key'));
+        $this->assertNotSame('re_secret_key_abc', Setting::where('key', 'resend_api_key')->value('value'));
     }
 }

@@ -13,13 +13,18 @@ class OutboundMailService
     public function send(string $recipient, string $subject, string $body): string
     {
         $driver = Setting::get('mail_mailer', config('mail.default', 'smtp'));
-        if (!in_array($driver, ['smtp', 'log'], true)) {
-            throw new RuntimeException('Unsupported mail driver. Select SMTP or Log in Settings.');
+        if (!in_array($driver, ['smtp', 'log', 'resend'], true)) {
+            throw new RuntimeException('Unsupported mail driver. Select Resend, SMTP or Log in Settings.');
         }
+
+        if ($driver === 'resend') {
+            return $this->sendViaResend($recipient, $subject, $body);
+        }
+
         $auth = (bool) Setting::get('smtp_auth', true);
         $host = Setting::get('mail_host', config('mail.mailers.smtp.host', 'smtp.gmail.com'));
-        $port = (int) Setting::get('mail_port', config('mail.mailers.smtp.port', 465));
-        $encryption = Setting::get('mail_encryption', 'ssl');
+        $port = (int) Setting::get('mail_port', config('mail.mailers.smtp.port', 587));
+        $encryption = Setting::get('mail_encryption', 'tls');
         $username = $auth ? Setting::get('mail_username', config('mail.mailers.smtp.username')) : null;
         $password = $auth ? Setting::get('mail_password', config('mail.mailers.smtp.password')) : null;
 
@@ -57,5 +62,47 @@ class OutboundMailService
             if ($reply = Setting::get('mail_reply_to')) $mail->replyTo($reply);
         });
         return $driver === 'log' ? 'logged' : 'accepted';
+    }
+
+    /**
+     * Send email via Resend HTTP REST API (port 443 HTTPS).
+     * Never blocked by cloud firewall / SMTP restrictions.
+     */
+    private function sendViaResend(string $recipient, string $subject, string $body): string
+    {
+        $apiKey = Setting::get('resend_api_key', env('RESEND_API_KEY'));
+        if (empty($apiKey)) {
+            throw new RuntimeException('Resend API key is not configured. Please enter your API key in Settings or set the RESEND_API_KEY environment variable.');
+        }
+
+        $fromAddress = Setting::get('mail_from_address', env('MAIL_FROM_ADDRESS', 'onboarding@resend.dev'));
+        $fromName    = Setting::get('mail_from_name', env('MAIL_FROM_NAME', 'Evolex Operations Hub'));
+        $fromFormatted = "{$fromName} <{$fromAddress}>";
+        $replyTo     = Setting::get('mail_reply_to', 'evolexfoods@gmail.com');
+        $footer      = Setting::get('email_footer_text', '');
+        $fullBody    = $body . ($footer ? "\n\n" . $footer : '');
+
+        $payload = [
+            'from'    => $fromFormatted,
+            'to'      => [$recipient],
+            'subject' => $subject,
+            'text'    => $fullBody,
+        ];
+
+        if (!empty($replyTo)) {
+            $payload['reply_to'] = $replyTo;
+        }
+
+        $response = \Illuminate\Support\Facades\Http::withToken(trim((string) $apiKey))
+            ->timeout(15)
+            ->post('https://api.resend.com/emails', $payload);
+
+        if (!$response->successful()) {
+            $errorJson = $response->json();
+            $errorMessage = $errorJson['message'] ?? $response->body() ?? 'Failed to send email via Resend';
+            throw new RuntimeException("Resend API error ({$response->status()}): {$errorMessage}");
+        }
+
+        return 'accepted';
     }
 }

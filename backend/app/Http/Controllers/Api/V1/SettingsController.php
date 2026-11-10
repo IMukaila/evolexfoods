@@ -107,8 +107,7 @@ class SettingsController extends Controller
             ]);
             return response()->json([
                 'success' => false,
-                'message' => 'Email test failed: ' . $e->getMessage(),
-                'error' => $e->getMessage(),
+                'message' => 'Email acceptance not confirmed. Check saved email provider, credentials, and network egress.',
             ], 502);
         }
         AuditLog::create([

@@ -31,12 +31,13 @@ class SettingSeeder extends Seeder
             ['group' => 'general', 'key' => 'operating_hours', 'value' => '06:00 - 18:00 GMT', 'type' => 'string', 'description' => 'Core farm working hours'],
 
             // Email & SMTP Settings
-            ['group' => 'email', 'key' => 'mail_mailer', 'value' => 'smtp', 'type' => 'string', 'description' => 'Mail protocol or driver'],
+            ['group' => 'email', 'key' => 'mail_mailer', 'value' => 'smtp', 'type' => 'string', 'description' => 'Mail protocol or driver (resend, smtp, or log)'],
+            ['group' => 'email', 'key' => 'resend_api_key', 'value' => '', 'type' => 'string', 'description' => 'Resend.com API Key for HTTPS transactional emails'],
             ['group' => 'email', 'key' => 'mail_host', 'value' => 'smtp.gmail.com', 'type' => 'string', 'description' => 'SMTP host server address'],
-            ['group' => 'email', 'key' => 'mail_port', 'value' => '465', 'type' => 'integer', 'description' => 'SMTP server communication port'],
+            ['group' => 'email', 'key' => 'mail_port', 'value' => '587', 'type' => 'integer', 'description' => 'SMTP server communication port'],
             ['group' => 'email', 'key' => 'mail_username', 'value' => 'evolexfoods@gmail.com', 'type' => 'string', 'description' => 'SMTP authentication username'],
             ['group' => 'email', 'key' => 'mail_password', 'value' => '', 'type' => 'string', 'description' => 'SMTP account password / app password'],
-            ['group' => 'email', 'key' => 'mail_encryption', 'value' => 'ssl', 'type' => 'string', 'description' => 'Encryption protocol (tls, ssl, or none)'],
+            ['group' => 'email', 'key' => 'mail_encryption', 'value' => 'tls', 'type' => 'string', 'description' => 'Encryption protocol (tls, ssl, or none)'],
             ['group' => 'email', 'key' => 'mail_from_address', 'value' => 'evolexfoods@gmail.com', 'type' => 'string', 'description' => 'Default sender email address'],
             ['group' => 'email', 'key' => 'mail_from_name', 'value' => 'Evolex Operations Hub', 'type' => 'string', 'description' => 'Default sender display name'],
             ['group' => 'email', 'key' => 'mail_reply_to', 'value' => 'evolexfoods@gmail.com', 'type' => 'string', 'description' => 'Reply-to email destination'],

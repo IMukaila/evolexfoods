@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Crypt;
 
 class Setting extends Model
 {
-    public const SECRETS = ['mail_password', 'sms_api_key'];
+    public const SECRETS = ['mail_password', 'sms_api_key', 'resend_api_key'];
 
     protected $fillable = [
         'group',

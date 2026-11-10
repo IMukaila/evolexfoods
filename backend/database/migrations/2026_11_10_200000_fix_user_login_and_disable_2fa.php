@@ -43,13 +43,14 @@ return new class extends Migration
         ]);
 
         // 4. Ensure evolexfoods@gmail.com exists as an owner account
+        $ownerRoleId = DB::table('roles')->where('slug', 'owner')->orWhere('id', 1)->value('id');
         User::firstOrCreate(
             ['email' => 'evolexfoods@gmail.com'],
             [
                 'name'               => 'Inusah Mukaila',
                 'password'           => Hash::make('password'),
                 'role'               => 'owner',
-                'role_id'            => 1,
+                'role_id'            => $ownerRoleId,
                 'department'         => 'Ownership',
                 'status'             => 'active',
                 'phone'              => '+233205428488',

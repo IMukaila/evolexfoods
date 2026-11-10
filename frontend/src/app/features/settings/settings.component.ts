@@ -37,6 +37,8 @@ export interface GeneralSettings {
 
 export interface EmailSettings {
   mail_mailer: string;
+  resend_api_key?: string;
+  resend_api_key_configured?: boolean;
   mail_host: string;
   mail_port: number;
   mail_username: string;
@@ -244,6 +246,8 @@ export class SettingsComponent implements OnInit {
     },
     email: {
       mail_mailer: 'smtp',
+      resend_api_key: '',
+      resend_api_key_configured: false,
       mail_host: 'smtp.gmail.com',
       mail_port: 465,
       mail_username: 'evolexfoods@gmail.com',

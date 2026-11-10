@@ -450,58 +450,79 @@
             <div class="form-group">
               <label for="mail_mailer">Mail Driver / Protocol</label>
               <select id="mail_mailer" [(ngModel)]="form.email.mail_mailer" (ngModelChange)="onFieldChange()" class="form-control">
-                <option value="smtp">SMTP (Recommended)</option>
+                <option value="resend">Resend API (HTTPS — Recommended for Cloud/Railway)</option>
+                <option value="smtp">SMTP (Direct Server Connection)</option>
                 <option value="log">Log Only (Testing / Staging)</option>
               </select>
             </div>
 
-            <div class="form-group">
-              <label for="mail_host">SMTP Server Host <span class="req">*</span></label>
-              <input type="text" id="mail_host" [(ngModel)]="form.email.mail_host" (ngModelChange)="onFieldChange()" class="form-control" placeholder="smtp.gmail.com" />
-            </div>
-
-            <div class="form-group">
-              <label for="mail_port">Server Port <span class="req">*</span></label>
-              <input type="number" id="mail_port" [(ngModel)]="form.email.mail_port" (ngModelChange)="onFieldChange()" class="form-control" placeholder="465" />
-            </div>
-
-            <div class="form-group">
-              <label for="mail_encryption">Encryption Security</label>
-              <select id="mail_encryption" [(ngModel)]="form.email.mail_encryption" (ngModelChange)="onFieldChange()" class="form-control">
-                <option value="tls">TLS (STARTTLS - Standard port 587)</option>
-                <option value="ssl">SSL (Implicit SSL - Port 465)</option>
-                <option value="none">None (Insecure / Local only)</option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label for="mail_username">SMTP Username / Email <span class="req">*</span></label>
-              <input type="text" id="mail_username" [(ngModel)]="form.email.mail_username" (ngModelChange)="onFieldChange()" class="form-control" placeholder="evolexfoods@gmail.com" />
-            </div>
-
-            <div class="form-group">
-              <label for="mail_password">SMTP App Password / Token <span class="req">*</span></label>
+            <!-- Resend API Key (Port 443 HTTPS) -->
+            <div class="form-group span-2" *ngIf="form.email.mail_mailer === 'resend'">
+              <label for="resend_api_key">Resend API Key <span class="req">*</span></label>
               <div class="input-with-button">
-                <input [type]="showPassword ? 'text' : 'password'" id="mail_password" [(ngModel)]="form.email.mail_password" (ngModelChange)="onFieldChange()" class="form-control" placeholder="Leave blank to keep saved password" autocomplete="new-password" />
-                <button type="button" class="btn-inside-icon" (click)="showPassword = !showPassword" [title]="showPassword ? 'Hide password' : 'Show password'">
+                <input [type]="showPassword ? 'text' : 'password'" id="resend_api_key" [(ngModel)]="form.email.resend_api_key" (ngModelChange)="onFieldChange()" class="form-control" placeholder="re_123456789... (Leave blank to keep saved key)" autocomplete="new-password" />
+                <button type="button" class="btn-inside-icon" (click)="showPassword = !showPassword" [title]="showPassword ? 'Hide key' : 'Show key'">
                   <svg *ngIf="!showPassword" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                   <svg *ngIf="showPassword" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
                 </button>
               </div>
+              <small class="form-text text-muted">
+                {{ form.email.resend_api_key_configured ? '✓ Resend API key is configured and encrypted in database.' : 'Sends reliably over HTTPS port 443 with 0 blocked ports. Get a free API key at resend.com (3,000 free emails/month).' }}
+              </small>
             </div>
+
+            <!-- SMTP Specific Options -->
+            <ng-container *ngIf="form.email.mail_mailer === 'smtp'">
+              <div class="form-group">
+                <label for="mail_host">SMTP Server Host <span class="req">*</span></label>
+                <input type="text" id="mail_host" [(ngModel)]="form.email.mail_host" (ngModelChange)="onFieldChange()" class="form-control" placeholder="smtp.gmail.com" />
+              </div>
+
+              <div class="form-group">
+                <label for="mail_port">Server Port <span class="req">*</span></label>
+                <input type="number" id="mail_port" [(ngModel)]="form.email.mail_port" (ngModelChange)="onFieldChange()" class="form-control" placeholder="587" />
+              </div>
+
+              <div class="form-group">
+                <label for="mail_encryption">Encryption Security</label>
+                <select id="mail_encryption" [(ngModel)]="form.email.mail_encryption" (ngModelChange)="onFieldChange()" class="form-control">
+                  <option value="tls">TLS (STARTTLS - Standard port 587)</option>
+                  <option value="ssl">SSL (Implicit SSL - Port 465)</option>
+                  <option value="none">None (Insecure / Local only)</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="mail_username">SMTP Username / Email <span class="req">*</span></label>
+                <input type="text" id="mail_username" [(ngModel)]="form.email.mail_username" (ngModelChange)="onFieldChange()" class="form-control" placeholder="evolexfoods@gmail.com" />
+              </div>
+
+              <div class="form-group">
+                <label for="mail_password">SMTP App Password / Token <span class="req">*</span></label>
+                <div class="input-with-button">
+                  <input [type]="showPassword ? 'text' : 'password'" id="mail_password" [(ngModel)]="form.email.mail_password" (ngModelChange)="onFieldChange()" class="form-control" placeholder="Leave blank to keep saved password" autocomplete="new-password" />
+                  <button type="button" class="btn-inside-icon" (click)="showPassword = !showPassword" [title]="showPassword ? 'Hide password' : 'Show password'">
+                    <svg *ngIf="!showPassword" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <svg *ngIf="showPassword" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                  </button>
+                </div>
+              </div>
+            </ng-container>
           </div>
 
-          <p class="text-muted">{{ form.email.mail_password_configured ? 'SMTP password is saved securely. Leave blank to retain it.' : 'No SMTP password saved.' }}</p>
-          <div class="toggle-group-item mt-4">
-            <div class="toggle-info">
-              <span class="toggle-title">Require SMTP Server Authentication</span>
-              <span class="toggle-desc">Authenticate outbound requests with the username and secret provided above.</span>
+          <ng-container *ngIf="form.email.mail_mailer === 'smtp'">
+            <p class="text-muted">{{ form.email.mail_password_configured ? 'SMTP password is saved securely. Leave blank to retain it.' : 'No SMTP password saved.' }}</p>
+            <div class="toggle-group-item mt-4">
+              <div class="toggle-info">
+                <span class="toggle-title">Require SMTP Server Authentication</span>
+                <span class="toggle-desc">Authenticate outbound requests with the username and secret provided above.</span>
+              </div>
+              <label class="switch">
+                <input type="checkbox" [(ngModel)]="form.email.smtp_auth" (ngModelChange)="onFieldChange()" />
+                <span class="slider"></span>
+              </label>
             </div>
-            <label class="switch">
-              <input type="checkbox" [(ngModel)]="form.email.smtp_auth" (ngModelChange)="onFieldChange()" />
-              <span class="slider"></span>
-            </label>
-          </div>
+          </ng-container>
         </div>
       </div>
 

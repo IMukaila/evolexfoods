@@ -25,10 +25,10 @@ class CommunicationSettings
             }
             unset($values['mail_password_configured'], $values['sms_api_key_configured']);
             $known = Setting::where('group', $group)->pluck('key')->all();
-            if ($group === 'email') $known = ['mail_mailer', 'mail_host', 'mail_port', 'mail_username', 'mail_password', 'mail_encryption', 'mail_from_address', 'mail_from_name', 'mail_reply_to', 'smtp_auth', 'send_welcome_email', 'email_footer_text'];
+            if ($group === 'email') $known = ['mail_mailer', 'resend_api_key', 'mail_host', 'mail_port', 'mail_username', 'mail_password', 'mail_encryption', 'mail_from_address', 'mail_from_name', 'mail_reply_to', 'smtp_auth', 'send_welcome_email', 'email_footer_text'];
             if ($group === 'sms') $known = array_keys(self::SMS_DEFAULTS);
             foreach ($values as $key => $value) {
-                if (!in_array($key, $known, true) || (in_array($key, Setting::SECRETS, true) && $group !== ($key === 'mail_password' ? 'email' : 'sms'))) {
+                if (!in_array($key, $known, true) || (in_array($key, Setting::SECRETS, true) && $group !== (in_array($key, ['mail_password', 'resend_api_key'], true) ? 'email' : 'sms'))) {
                     throw ValidationException::withMessages(["$group.$key" => 'Unknown setting or incorrect settings group.']);
                 }
                 if (!is_scalar($value) && $value !== null) {
@@ -39,9 +39,10 @@ class CommunicationSettings
         unset($values);
 
         Validator::make($payload, [
-            'email.mail_mailer' => ['sometimes', Rule::in(['smtp', 'log'])],
-            'email.mail_host' => ['sometimes', 'required', 'string', 'max:255', 'regex:/^[a-zA-Z0-9.-]+$/'],
-            'email.mail_port' => 'sometimes|required|integer|min:1|max:65535',
+            'email.mail_mailer' => ['sometimes', Rule::in(['smtp', 'log', 'resend'])],
+            'email.resend_api_key' => 'sometimes|nullable|string|max:2000',
+            'email.mail_host' => ['sometimes', 'nullable', 'string', 'max:255', 'regex:/^[a-zA-Z0-9.-]+$/'],
+            'email.mail_port' => 'sometimes|nullable|integer|min:1|max:65535',
             'email.mail_username' => 'sometimes|nullable|string|max:255',
             'email.mail_password' => 'sometimes|nullable|string|max:2000',
             'email.mail_encryption' => ['sometimes', Rule::in(['tls', 'ssl', 'none'])],
@@ -58,9 +59,11 @@ class CommunicationSettings
         ])->validate();
 
         // A blank field means keep the saved secret; never save a display mask.
-        foreach (['email' => 'mail_password', 'sms' => 'sms_api_key'] as $group => $key) {
-            if (isset($payload[$group]) && (empty($payload[$group][$key]) || preg_match('/^[•*]+$/u', $payload[$group][$key] ?? ''))) {
-                unset($payload[$group][$key]);
+        foreach (['email' => ['mail_password', 'resend_api_key'], 'sms' => ['sms_api_key']] as $group => $keys) {
+            foreach ($keys as $key) {
+                if (isset($payload[$group]) && (empty($payload[$group][$key]) || preg_match('/^[•*]+$/u', $payload[$group][$key] ?? ''))) {
+                    unset($payload[$group][$key]);
+                }
             }
         }
         return $payload;
