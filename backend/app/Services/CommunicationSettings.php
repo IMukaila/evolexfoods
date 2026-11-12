@@ -23,7 +23,7 @@ class CommunicationSettings
             if (!is_array($values) || !in_array($group, ['general', 'email', 'sms', 'notifications', 'livestock', 'integrations', 'security', 'procurement'], true)) {
                 throw ValidationException::withMessages([$group => 'Use a supported settings group.']);
             }
-            unset($values['mail_password_configured'], $values['sms_api_key_configured']);
+            unset($values['mail_password_configured'], $values['sms_api_key_configured'], $values['resend_api_key_configured']);
             $known = Setting::where('group', $group)->pluck('key')->all();
             if ($group === 'email') $known = ['mail_mailer', 'resend_api_key', 'mail_host', 'mail_port', 'mail_username', 'mail_password', 'mail_encryption', 'mail_from_address', 'mail_from_name', 'mail_reply_to', 'smtp_auth', 'send_welcome_email', 'email_footer_text'];
             if ($group === 'sms') $known = array_keys(self::SMS_DEFAULTS);
