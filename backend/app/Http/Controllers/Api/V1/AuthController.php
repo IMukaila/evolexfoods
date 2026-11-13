@@ -71,7 +71,15 @@ class AuthController extends Controller
             // No code submitted yet → prompt (and auto-send OTP for email/WA)
             if (empty($data['code'])) {
                 if (in_array($method, ['email', 'whatsapp'], true)) {
-                    TwoFactorService::sendOtp($user, $method);
+                    try {
+            TwoFactorService::sendOtp($user, $method);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('2FA OTP send failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to deliver verification code: ' . $e->getMessage(),
+            ], 422);
+        }
                 }
 
                 $hint = match ($method) {
@@ -184,7 +192,15 @@ class AuthController extends Controller
         $user   = $request->user();
         $method = $request->input('method');
 
-        TwoFactorService::sendOtp($user, $method);
+        try {
+            TwoFactorService::sendOtp($user, $method);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('2FA OTP send failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to deliver verification code: ' . $e->getMessage(),
+            ], 422);
+        }
 
         $hint = $method === 'email'
             ? 'A 6-digit code has been sent to ' . $this->maskEmail($user->email)

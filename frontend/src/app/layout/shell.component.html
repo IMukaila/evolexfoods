@@ -423,7 +423,7 @@
               <h4>Enter 6-Digit Code</h4>
               <div class="input-row-shell">
                 <input type="text" inputmode="numeric" [(ngModel)]="twoFactorActivationCode"
-                  placeholder="123456" maxlength="6" class="code-input-shell font-mono" />
+                  placeholder="6-digit code" maxlength="6" class="code-input-shell font-mono" />
                 <button class="btn-activate-shell" type="button" (click)="submitTwoFactorActivation()" [disabled]="twoFactorActivating || !twoFactorActivationCode">
                   <span *ngIf="twoFactorActivating" class="spinner-sm-shell"></span>
                   <span>{{ twoFactorActivating ? 'Verifying...' : 'Verify &amp; Continue' }}</span>
@@ -431,7 +431,7 @@
               </div>
               <button *ngIf="shellSelectedMethod !== 'totp'" type="button" class="resend-shell-link" [disabled]="shellOtpSending" (click)="shellSendOtp()">Resend code</button>
               <p class="err-text-shell" *ngIf="twoFactorError">{{ twoFactorError }}</p>
-              <span class="hint-shell">Demo: Enter <strong>123456</strong> to activate instantly.</span>
+              <span class="hint-shell">Enter the 6-digit code sent to your inbox or authenticator app.</span>
             </div>
           </div>
 

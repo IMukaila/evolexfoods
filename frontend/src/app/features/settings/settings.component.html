@@ -1296,13 +1296,13 @@
                   <div>
                     <h5>Enter 6-Digit Authenticator Code</h5>
                     <div class="verify-action-row">
-                      <input type="text" [(ngModel)]="twoFactorActivationCode" placeholder="123456" maxlength="6" class="form-control font-mono code-input-sm" />
+                      <input type="text" [(ngModel)]="twoFactorActivationCode" placeholder="6-digit code" maxlength="6" class="form-control font-mono code-input-sm" />
                       <button class="btn btn-primary" type="button" (click)="activateTwoFactor()" [disabled]="twoFactorActivating || !twoFactorActivationCode">
                         <span *ngIf="twoFactorActivating" class="spinner-sm"></span>
                         <span>{{ twoFactorActivating ? 'Activating...' : 'Confirm & Activate 2FA' }}</span>
                       </button>
                     </div>
-                    <span class="field-hint">Testing code: Enter <strong>123456</strong> for immediate verification.</span>
+                    <span class="field-hint">Enter the 6-digit code from your Authenticator app.</span>
                   </div>
                 </div>
               </div>
@@ -1315,7 +1315,7 @@
                     <h5>Enter the 6-Digit Verification Code</h5>
                     <p class="small text-muted mb-2">Enter the code received via {{ settingsTwoFaMethod === 'email' ? 'Email' : 'WhatsApp' }}:</p>
                     <div class="verify-action-row">
-                      <input type="text" [(ngModel)]="twoFactorActivationCode" placeholder="123456" maxlength="6" class="form-control font-mono code-input-sm" />
+                      <input type="text" [(ngModel)]="twoFactorActivationCode" placeholder="6-digit code" maxlength="6" class="form-control font-mono code-input-sm" />
                       <button class="btn btn-primary" type="button" (click)="activateTwoFactor()" [disabled]="twoFactorActivating || !twoFactorActivationCode">
                         <span *ngIf="twoFactorActivating" class="spinner-sm"></span>
                         <span>{{ twoFactorActivating ? 'Activating...' : 'Confirm & Activate 2FA' }}</span>
@@ -1324,7 +1324,7 @@
                         Resend Code
                       </button>
                     </div>
-                    <span class="field-hint">Testing code: Enter <strong>123456</strong> for immediate verification.</span>
+                    <span class="field-hint">Enter the 6-digit code sent to your inbox.</span>
                   </div>
                 </div>
               </div>

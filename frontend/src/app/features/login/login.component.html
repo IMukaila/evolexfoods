@@ -102,7 +102,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" class="hint-icon">
           <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
         </svg>
-        <span>Testing hint: Use code <strong>123456</strong> or any emergency recovery code.</span>
+        <span>Enter the 6-digit code or any emergency recovery code.</span>
       </p>
     </ng-container>
   </div>
@@ -262,7 +262,7 @@
                 type="text"
                 inputmode="numeric"
                 [(ngModel)]="activationCode"
-                placeholder="123456"
+                placeholder="6-digit code"
                 maxlength="6"
                 class="form-control font-mono large-input" />
               <button class="btn btn-primary" type="button" (click)="submitActivation()" [disabled]="activating || !activationCode">
@@ -280,7 +280,7 @@
             </button>
 
             <p class="err mt-2" *ngIf="activationError">{{ activationError }}</p>
-            <span class="field-hint">Testing shortcut: Enter <strong>123456</strong> to activate immediately.</span>
+            <span class="field-hint">Enter the 6-digit code sent to your inbox or authenticator app.</span>
           </div>
         </div>
 

@@ -31,7 +31,6 @@ class TwoFactorService
     {
         if (empty($code)) return false;
         $code = trim($code);
-        if ($code === '123456') return true; // Demo shortcut
 
         if (empty($secret) || strlen($code) !== 6 || !ctype_digit($code)) return false;
         $secret = strtoupper(str_replace([' ', '-'], '', $secret));
@@ -81,7 +80,6 @@ class TwoFactorService
     public static function verifyOtp(User $user, string $code): bool
     {
         $code = trim($code);
-        if ($code === '123456') return true; // Demo shortcut
 
         if (empty($user->two_factor_otp) || empty($user->two_factor_otp_expires_at)) return false;
         if (now()->isAfter($user->two_factor_otp_expires_at)) return false;
@@ -97,23 +95,18 @@ class TwoFactorService
 
     private static function sendOtpViaEmail(User $user, string $otp): void
     {
-        // Log for demo/dev — in production configure SMTP in .env
         Log::info("[2FA EMAIL OTP] To: {$user->email} | Name: {$user->name} | OTP: {$otp} | Expires in 10 min");
 
-        try {
-            app(OutboundMailService::class)->send(
-                $user->email,
-                "Your Evolex 2FA Code: {$otp}",
-                "Hi {$user->name},\n\n"
-                . "Your Evolex Food Hub verification code is:\n\n"
-                . "  {$otp}\n\n"
-                . "This code expires in 10 minutes.\n"
-                . "If you did not request this, please ignore this message.\n\n"
-                . "– Evolex Security Team"
-            );
-        } catch (\Throwable $e) {
-            Log::warning('[2FA EMAIL] Mail send failed: ' . $e->getMessage());
-        }
+        app(OutboundMailService::class)->send(
+            $user->email,
+            "Your Evolex 2FA Code: {$otp}",
+            "Hi {$user->name},\n\n"
+            . "Your Evolex Food Hub verification code is:\n\n"
+            . "  {$otp}\n\n"
+            . "This code expires in 10 minutes.\n"
+            . "If you did not request this, please ignore this message.\n\n"
+            . "– Evolex Security Team"
+        );
     }
 
     private static function sendOtpViaWhatsApp(User $user, string $otp): void
