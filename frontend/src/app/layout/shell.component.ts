@@ -22,6 +22,8 @@ export class ShellComponent implements OnInit, OnDestroy {
   searchQuery = '';
   logoUrl = 'assets/logo-full-dark.svg';
   activePopupGroup: any = null;
+  popupTop = 0;
+  private popupCloseTimer: any = null;
   showLogoutConfirm = false;
 
   // Notifications (live from the Notification Centre API)
@@ -185,6 +187,9 @@ export class ShellComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    if (this.popupCloseTimer) {
+      clearTimeout(this.popupCloseTimer);
+    }
     if (this.notificationRefreshTimer) {
       clearInterval(this.notificationRefreshTimer);
     }
@@ -397,16 +402,62 @@ export class ShellComponent implements OnInit, OnDestroy {
     }
   }
 
-  showPopup(group: any) {
+  showPopup(group: any, event?: MouseEvent) {
+    if (this.popupCloseTimer) {
+      clearTimeout(this.popupCloseTimer);
+      this.popupCloseTimer = null;
+    }
     if (this.sidebarCollapsed) {
       this.activePopupGroup = group;
+      if (event) {
+        const target = (event.currentTarget as HTMLElement) || (event.target as HTMLElement);
+        if (target) {
+          const rect = target.getBoundingClientRect();
+          const popupEstimatedHeight = Math.min(360, (group.items?.length || 4) * 44 + 60);
+          let top = rect.top;
+          if (top + popupEstimatedHeight > window.innerHeight) {
+            top = Math.max(12, window.innerHeight - popupEstimatedHeight - 16);
+          }
+          this.popupTop = Math.max(12, top);
+        }
+      }
     }
   }
 
-  hidePopup() {
-    if (this.sidebarCollapsed) {
-      this.activePopupGroup = null;
+  scheduleHidePopup() {
+    if (!this.sidebarCollapsed) return;
+    if (this.popupCloseTimer) {
+      clearTimeout(this.popupCloseTimer);
     }
+    this.popupCloseTimer = setTimeout(() => {
+      this.activePopupGroup = null;
+      this.popupCloseTimer = null;
+    }, 180);
+  }
+
+  cancelHidePopup() {
+    if (this.popupCloseTimer) {
+      clearTimeout(this.popupCloseTimer);
+      this.popupCloseTimer = null;
+    }
+  }
+
+  togglePopup(group: any, event: MouseEvent) {
+    if (this.sidebarCollapsed) {
+      if (this.activePopupGroup === group) {
+        this.closePopup();
+      } else {
+        this.showPopup(group, event);
+      }
+    }
+  }
+
+  closePopup() {
+    if (this.popupCloseTimer) {
+      clearTimeout(this.popupCloseTimer);
+      this.popupCloseTimer = null;
+    }
+    this.activePopupGroup = null;
   }
 
   // ─── Logout Confirmation ──────────────────────────────────────────────────

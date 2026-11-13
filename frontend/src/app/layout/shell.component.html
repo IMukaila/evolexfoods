@@ -10,12 +10,13 @@
         <div class="nav-group" 
              *ngIf="isGroupVisible(group)"
              [class.has-popup]="activePopupGroup === group"
-             (mouseenter)="showPopup(group)"
-             (mouseleave)="hidePopup()">
+             (mouseenter)="showPopup(group, $event)"
+             (mouseleave)="scheduleHidePopup()">
           <!-- Collapsed view: show group icon -->
           <button *ngIf="sidebarCollapsed" 
              class="nav-group-icon-only"
-             [title]="group.label">
+             [title]="group.label"
+             (click)="togglePopup(group, $event)">
             <span class="ico" [ngSwitch]="group.icon">
               <svg *ngSwitchCase="'hub'" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h7v7H4V4zm9 0h7v7h-7V4zM4 13h7v7H4v-7zm9 0h7v7h-7v-7z"/></svg>
               <svg *ngSwitchCase="'livestock'" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8c0-1.7 1.8-3 4-3s4 1.3 4 3c2.2 0 4 1.6 4 3.5S17.2 15 15 15H8c-2.2 0-4-1.6-4-3.5S5.8 8 8 8H7zm1 9v3m8-3v3M9 8V5m6 3V5"/></svg>
@@ -30,11 +31,13 @@
           <!-- Popup menu for collapsed sidebar -->
           <div class="nav-popup" 
                *ngIf="sidebarCollapsed && activePopupGroup === group"
-               (mouseenter)="showPopup(group)"
-               (mouseleave)="hidePopup()">
+               [style.top.px]="popupTop"
+               (mouseenter)="cancelHidePopup()"
+               (mouseleave)="scheduleHidePopup()">
             <div class="nav-popup-header">{{ group.label }}</div>
             <a *ngFor="let item of getPermittedItems(group)" 
                [routerLink]="item.path" 
+               (click)="closePopup()"
                routerLinkActive="active"
                [routerLinkActiveOptions]="{ exact: true }">
               <span class="ico" [ngSwitch]="item.icon">

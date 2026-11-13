@@ -357,7 +357,7 @@ export class SettingsComponent implements OnInit {
         }
 
         // Restore uploaded logo / favicon previews from saved settings.
-        const general = res.settings['general'] as any;
+        const general = res?.settings?.['general'] as any;
         if (general?.site_logo) {
           this.logoPreview = general.site_logo;
           this.form.general.site_logo = general.site_logo;
