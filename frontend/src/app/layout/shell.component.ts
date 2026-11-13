@@ -4,6 +4,7 @@ import { CommonModule, NgClass, NgFor, NgIf, NgSwitch, NgSwitchCase } from '@ang
 import { FormsModule } from '@angular/forms';
 import { AuthService, TwoFactorSetupResponse, TwoFaMethod } from '../core/services/auth.service';
 import { NotificationService } from '../core/services/notification.service';
+import { SettingsService } from '../core/services/settings.service';
 import { AppNotification } from '../core/models/notification.model';
 
 @Component({
@@ -19,6 +20,7 @@ export class ShellComponent implements OnInit, OnDestroy {
   showNotifications = false;
   showUserMenu = false;
   searchQuery = '';
+  logoUrl = 'assets/logo-full-dark.svg';
   activePopupGroup: any = null;
   showLogoutConfirm = false;
 
@@ -148,7 +150,8 @@ export class ShellComponent implements OnInit, OnDestroy {
   constructor(
     public auth: AuthService,
     private router: Router,
-    private notificationSvc: NotificationService
+    private notificationSvc: NotificationService,
+    private settingsSvc: SettingsService
   ) {
     // Load dark mode preference from localStorage
     const savedDarkMode = localStorage.getItem('darkMode');
@@ -168,6 +171,17 @@ export class ShellComponent implements OnInit, OnDestroy {
     this.notificationSvc.recent$.subscribe((items) => (this.notifications = items));
     this.notificationSvc.refresh();
     this.notificationRefreshTimer = setInterval(() => this.notificationSvc.refresh(), 60_000);
+
+    // Display the uploaded company logo in the sidebar (fall back to the default asset).
+    this.settingsSvc.getSettings().subscribe({
+      next: (res) => {
+        const logo = res.settings?.['general']?.['site_logo'];
+        if (logo) {
+          this.logoUrl = logo;
+        }
+      },
+      error: () => void 0, // keep default asset if settings are unavailable
+    });
   }
 
   ngOnDestroy(): void {

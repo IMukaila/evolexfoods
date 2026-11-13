@@ -141,4 +141,26 @@ export class SettingsService {
   clearActivityLogs(days: number | string): Observable<{ success: boolean; message: string }> {
     return this.api.post<{ success: boolean; message: string }>('/settings/activity-logs/clear', { days });
   }
+
+  // ─── Brand Asset (Logo / Favicon) Uploads ──────────────────────────────
+  // FormData is used (not ApiService.post) so the browser sends multipart/form-data.
+  uploadLogo(file: File): Observable<{ success: boolean; url: string; message: string }> {
+    const formData = new FormData();
+    formData.append('logo', file);
+    return this.http.post<{ success: boolean; url: string; message: string }>('/api/v1/settings/upload-logo', formData);
+  }
+
+  uploadFavicon(file: File): Observable<{ success: boolean; url: string; message: string }> {
+    const formData = new FormData();
+    formData.append('favicon', file);
+    return this.http.post<{ success: boolean; url: string; message: string }>('/api/v1/settings/upload-favicon', formData);
+  }
+
+  removeLogo(): Observable<{ success: boolean; message: string }> {
+    return this.http.delete<{ success: boolean; message: string }>('/api/v1/settings/logo');
+  }
+
+  removeFavicon(): Observable<{ success: boolean; message: string }> {
+    return this.http.delete<{ success: boolean; message: string }>('/api/v1/settings/favicon');
+  }
 }

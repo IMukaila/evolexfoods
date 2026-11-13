@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class SettingsController extends Controller
 {
@@ -85,6 +86,38 @@ class SettingsController extends Controller
             'message' => "Successfully updated {$updatedCount} setting(s).",
             'settings' => Setting::getAllGrouped(),
         ]);
+    }
+
+    /**
+     * Upload and store the company logo.
+     */
+    public function uploadLogo(Request $request): JsonResponse
+    {
+        return $this->uploadBrandAsset($request, 'logo', 'site_logo', 2 * 1024 * 1024, ['jpg', 'jpeg', 'png', 'svg', 'webp']);
+    }
+
+    /**
+     * Upload and store the site favicon.
+     */
+    public function uploadFavicon(Request $request): JsonResponse
+    {
+        return $this->uploadBrandAsset($request, 'favicon', 'site_favicon', 512 * 1024, ['jpg', 'jpeg', 'png', 'svg', 'ico']);
+    }
+
+    /**
+     * Remove the stored company logo.
+     */
+    public function removeLogo(Request $request): JsonResponse
+    {
+        return $this->removeBrandAsset($request, 'site_logo');
+    }
+
+    /**
+     * Remove the stored site favicon.
+     */
+    public function removeFavicon(Request $request): JsonResponse
+    {
+        return $this->removeBrandAsset($request, 'site_favicon');
     }
 
     /**
@@ -495,5 +528,58 @@ class SettingsController extends Controller
         $pow = min($pow, count($units) - 1);
         $bytes /= (1 << (10 * $pow));
         return round($bytes, $precision) . ' ' . $units[$pow];
+    }
+
+    /**
+     * Upload a brand asset (logo/favicon), replace any previously stored file,
+     * persist its public URL as a setting, and return that URL.
+     */
+    private function uploadBrandAsset(Request $request, string $inputName, string $settingKey, int $maxBytes, array $allowedExtensions): JsonResponse
+    {
+        $request->validate([
+            $inputName => ['required', 'file', 'max:' . $maxBytes, 'mimes:' . implode(',', $allowedExtensions)],
+        ]);
+
+        $file = $request->file($inputName);
+        if (! $file || ! $file->isValid()) {
+            return response()->json(['success' => false, 'message' => 'Invalid file upload.'], 400);
+        }
+
+        // Delete the previously stored file, if any.
+        $previous = Setting::get($settingKey);
+        if ($previous && is_string($previous) && str_starts_with($previous, '/storage/')) {
+            $previousPath = ltrim(str_replace('/storage', '', $previous), '/');
+            Storage::disk('public')->delete($previousPath);
+        }
+
+        $storedPath = $file->store('uploads/settings', 'public'); // storage/app/public/uploads/settings/{hash}.{ext}
+        $url = '/storage/' . $storedPath;
+
+        Setting::set($settingKey, $url, 'general', 'string');
+
+        return response()->json([
+            'success' => true,
+            'url' => $url,
+            'message' => ucfirst($inputName) . ' uploaded successfully.',
+        ]);
+    }
+
+    /**
+     * Remove the stored brand asset file and clear its setting.
+     */
+    private function removeBrandAsset(Request $request, string $settingKey): JsonResponse
+    {
+        $current = Setting::get($settingKey);
+        if ($current && is_string($current) && str_starts_with($current, '/storage/')) {
+            $path = ltrim(str_replace('/storage', '', $current), '/');
+            Storage::disk('public')->delete($path);
+        }
+
+        Setting::set($settingKey, '', 'general', 'string');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Brand asset removed successfully.',
+        ]);
     }
 }

@@ -29,6 +29,8 @@ class SettingSeeder extends Seeder
             ['group' => 'general', 'key' => 'time_format', 'value' => '24h', 'type' => 'string', 'description' => 'Time presentation (12h or 24h)'],
             ['group' => 'general', 'key' => 'fiscal_year_start', 'value' => 'January', 'type' => 'string', 'description' => 'Starting month of fiscal calendar'],
             ['group' => 'general', 'key' => 'operating_hours', 'value' => '06:00 - 18:00 GMT', 'type' => 'string', 'description' => 'Core farm working hours'],
+            ['group' => 'general', 'key' => 'site_logo', 'value' => '', 'type' => 'string', 'description' => 'Public URL of the uploaded company logo'],
+            ['group' => 'general', 'key' => 'site_favicon', 'value' => '', 'type' => 'string', 'description' => 'Public URL of the uploaded site favicon'],
 
             // Email & SMTP Settings
             ['group' => 'email', 'key' => 'mail_mailer', 'value' => 'smtp', 'type' => 'string', 'description' => 'Mail protocol or driver (resend, smtp, or log)'],

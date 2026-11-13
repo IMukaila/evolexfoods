@@ -33,6 +33,8 @@ export interface GeneralSettings {
   time_format: string;
   fiscal_year_start: string;
   operating_hours: string;
+  site_logo?: string;
+  site_favicon?: string;
 }
 
 export interface EmailSettings {
@@ -353,6 +355,18 @@ export class SettingsComponent implements OnInit {
             }
           });
         }
+
+        // Restore uploaded logo / favicon previews from saved settings.
+        const general = res.settings['general'] as any;
+        if (general?.site_logo) {
+          this.logoPreview = general.site_logo;
+          this.form.general.site_logo = general.site_logo;
+        }
+        if (general?.site_favicon) {
+          this.faviconPreview = general.site_favicon;
+          this.form.general.site_favicon = general.site_favicon;
+          this.applyFavicon(general.site_favicon);
+        }
         this.loading = false;
         this.isDirty = false;
       },
@@ -497,6 +511,8 @@ export class SettingsComponent implements OnInit {
         this.isDirty = false;
         this.form.email.mail_password = '';
         this.form.email.mail_password_configured = res.settings?.email?.mail_password_configured;
+        this.form.email.resend_api_key = '';
+        this.form.email.resend_api_key_configured = res.settings?.email?.resend_api_key_configured;
         this.showToastMsg('success', res.message || 'Settings saved successfully!');
       },
       error: (err) => {
@@ -897,36 +913,97 @@ export class SettingsComponent implements OnInit {
     if (!this.logoFile || this.logoUploading) return;
     this.logoUploading = true;
     this.logoError = '';
-    // Simulate upload — replace with real API call when backend endpoint is ready
-    setTimeout(() => {
-      this.logoUploading = false;
-      this.showToastMsg('success', `Logo "${this.logoFile!.name}" uploaded successfully!`);
-      this.logoFile = null;
-    }, 1400);
+    this.settingsService.uploadLogo(this.logoFile!).subscribe({
+      next: (res) => {
+        this.logoUploading = false;
+        this.logoPreview = res.url;
+        this.logoFile = null;
+        this.form.general.site_logo = res.url;
+        this.showToastMsg('success', res.message || 'Logo uploaded successfully!');
+      },
+      error: (err) => {
+        this.logoUploading = false;
+        this.logoError = err?.error?.message || 'Failed to upload logo.';
+        this.showToastMsg('error', this.logoError);
+      },
+    });
   }
 
   uploadFavicon(): void {
     if (!this.faviconFile || this.faviconUploading) return;
     this.faviconUploading = true;
     this.faviconError = '';
-    // Simulate upload — replace with real API call when backend endpoint is ready
-    setTimeout(() => {
-      this.faviconUploading = false;
-      this.showToastMsg('success', `Favicon "${this.faviconFile!.name}" uploaded successfully!`);
-      this.faviconFile = null;
-    }, 1200);
+    this.settingsService.uploadFavicon(this.faviconFile!).subscribe({
+      next: (res) => {
+        this.faviconUploading = false;
+        this.faviconPreview = res.url;
+        this.faviconFile = null;
+        this.form.general.site_favicon = res.url;
+        this.applyFavicon(res.url);
+        this.showToastMsg('success', res.message || 'Favicon uploaded successfully!');
+      },
+      error: (err) => {
+        this.faviconUploading = false;
+        this.faviconError = err?.error?.message || 'Failed to upload favicon.';
+        this.showToastMsg('error', this.faviconError);
+      },
+    });
   }
 
   clearLogo(): void {
+    // If a server-stored logo exists, remove it permanently; otherwise just discard the local draft.
+    if (this.logoPreview?.startsWith('/storage/')) {
+      this.removeLogo();
+      return;
+    }
     this.logoPreview = null;
     this.logoFile = null;
     this.logoError = '';
   }
 
   clearFavicon(): void {
+    if (this.faviconPreview?.startsWith('/storage/')) {
+      this.removeFavicon();
+      return;
+    }
     this.faviconPreview = null;
     this.faviconFile = null;
     this.faviconError = '';
+  }
+
+  removeLogo(): void {
+    this.settingsService.removeLogo().subscribe({
+      next: () => {
+        this.logoPreview = 'assets/logo-full.svg';
+        this.logoFile = null;
+        this.form.general.site_logo = '';
+        this.showToastMsg('success', 'Logo removed.');
+      },
+      error: () => this.showToastMsg('error', 'Failed to remove logo.'),
+    });
+  }
+
+  removeFavicon(): void {
+    this.settingsService.removeFavicon().subscribe({
+      next: () => {
+        this.faviconPreview = 'assets/favicon.svg';
+        this.faviconFile = null;
+        this.form.general.site_favicon = '';
+        this.applyFavicon('assets/favicon.svg');
+        this.showToastMsg('success', 'Favicon removed.');
+      },
+      error: () => this.showToastMsg('error', 'Failed to remove favicon.'),
+    });
+  }
+
+  /**
+   * Apply the favicon to the browser tab <link rel="icon"> elements.
+   */
+  private applyFavicon(url: string | null): void {
+    if (!url) return;
+    document.querySelectorAll('link[rel*="icon"]').forEach((el) => {
+      (el as HTMLLinkElement).href = url;
+    });
   }
 
   onLogoDrop(event: DragEvent): void {

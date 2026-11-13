@@ -146,6 +146,13 @@ Route::prefix('v1')->group(function () {
             Route::post('/settings/activity-logs/clear', [SettingsController::class, 'clearActivityLogs']);
 
             Route::post('/settings/test-sms', [CommunicationController::class, 'testSms'])->middleware('throttle:5,1');
+
+            // Brand asset uploads (logo & favicon)
+            Route::post('/settings/upload-logo', [SettingsController::class, 'uploadLogo']);
+            Route::post('/settings/upload-favicon', [SettingsController::class, 'uploadFavicon']);
+            Route::delete('/settings/logo', [SettingsController::class, 'removeLogo']);
+            Route::delete('/settings/favicon', [SettingsController::class, 'removeFavicon']);
+
             Route::get('/communications/templates', [CommunicationController::class, 'templates']);
             Route::post('/communications/templates', [CommunicationController::class, 'saveTemplate']);
             Route::put('/communications/templates/{id}', [CommunicationController::class, 'saveTemplate'])->whereNumber('id');
