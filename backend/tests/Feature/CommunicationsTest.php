@@ -289,4 +289,33 @@ class CommunicationsTest extends TestCase
         $this->assertSame('re_secret_key_abc', Setting::get('resend_api_key'));
         $this->assertNotSame('re_secret_key_abc', Setting::where('key', 'resend_api_key')->value('value'));
     }
+
+    public function test_brand_logo_can_be_uploaded_and_persisted(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+        $file = \Illuminate\Http\UploadedFile::fake()->create('logo.png', 50, 'image/png');
+
+        $res = $this->postJson('/api/v1/settings/upload-logo', [
+            'logo' => $file,
+        ]);
+
+        $res->assertOk();
+        $res->assertJsonPath('success', true);
+        $this->assertStringStartsWith('data:image/png;base64,', $res->json('url'));
+        $this->assertSame($res->json('url'), Setting::get('site_logo'));
+    }
+
+    public function test_brand_favicon_can_be_uploaded_and_fetched_via_public_endpoint(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('public');
+        $file = \Illuminate\Http\UploadedFile::fake()->create('favicon.ico', 32, 'image/x-icon');
+
+        $this->postJson('/api/v1/settings/upload-favicon', [
+            'favicon' => $file,
+        ])->assertOk()->assertJsonPath('success', true);
+
+        $this->get('/api/v1/settings/brand-asset/favicon')
+            ->assertOk()
+            ->assertHeader('Content-Type', 'image/x-icon');
+    }
 }

@@ -234,10 +234,11 @@
 
               <!-- Preview / Drop Zone -->
               <div class="brand-drop-zone" [class.has-preview]="logoPreview"
+                   style="cursor: pointer;" (click)="logoFileInput.click()"
                    (dragover)="$event.preventDefault()" (drop)="onLogoDrop($event)">
                 <ng-container *ngIf="logoPreview; else logoEmpty">
                   <img [src]="logoPreview" alt="Logo preview" class="brand-preview-img" />
-                  <button class="brand-clear-btn" type="button" (click)="clearLogo()" title="Remove logo">
+                  <button class="brand-clear-btn" type="button" (click)="$event.stopPropagation(); clearLogo()" title="Remove logo">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                   </button>
                 </ng-container>
@@ -252,10 +253,10 @@
               <p class="brand-error" *ngIf="logoError">⚠ {{ logoError }}</p>
 
               <div class="brand-actions">
-                <label class="btn btn-outline brand-select-btn">
+                <label class="btn btn-outline brand-select-btn" (click)="$event.stopPropagation()">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                   Choose File
-                  <input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" (change)="onLogoSelected($event)" hidden />
+                  <input #logoFileInput type="file" accept="image/png,image/jpeg,image/jpg,image/svg+xml,image/webp" (change)="onLogoSelected($event)" hidden />
                 </label>
                 <button class="btn btn-primary" type="button" (click)="uploadLogo()" [disabled]="!logoFile || logoUploading">
                   <span *ngIf="logoUploading" class="spinner-sm"></span>
@@ -281,10 +282,11 @@
 
               <!-- Preview / Drop Zone -->
               <div class="brand-drop-zone favicon-zone" [class.has-preview]="faviconPreview"
+                   style="cursor: pointer;" (click)="faviconFileInput.click()"
                    (dragover)="$event.preventDefault()" (drop)="onFaviconDrop($event)">
                 <ng-container *ngIf="faviconPreview; else faviconEmpty">
                   <img [src]="faviconPreview" alt="Favicon preview" class="brand-preview-img favicon-preview" />
-                  <button class="brand-clear-btn" type="button" (click)="clearFavicon()" title="Remove favicon">
+                  <button class="brand-clear-btn" type="button" (click)="$event.stopPropagation(); clearFavicon()" title="Remove favicon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                   </button>
                 </ng-container>
@@ -299,10 +301,10 @@
               <p class="brand-error" *ngIf="faviconError">⚠ {{ faviconError }}</p>
 
               <div class="brand-actions">
-                <label class="btn btn-outline brand-select-btn">
+                <label class="btn btn-outline brand-select-btn" (click)="$event.stopPropagation()">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                   Choose File
-                  <input type="file" accept="image/png,image/x-icon,image/vnd.microsoft.icon,image/svg+xml" (change)="onFaviconSelected($event)" hidden />
+                  <input #faviconFileInput type="file" accept="image/png,image/x-icon,image/vnd.microsoft.icon,image/svg+xml,image/jpeg,image/jpg" (change)="onFaviconSelected($event)" hidden />
                 </label>
                 <button class="btn btn-primary" type="button" (click)="uploadFavicon()" [disabled]="!faviconFile || faviconUploading">
                   <span *ngIf="faviconUploading" class="spinner-sm"></span>

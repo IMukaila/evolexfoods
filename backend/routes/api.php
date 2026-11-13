@@ -33,6 +33,7 @@ Route::get('/health', function () {
 
 Route::prefix('v1')->group(function () {
     Route::post('/auth/login', [AuthController::class, 'login'])->name('login');
+    Route::get('/settings/brand-asset/{key}', [SettingsController::class, 'getBrandAsset']);
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/auth/me', [AuthController::class, 'me']);

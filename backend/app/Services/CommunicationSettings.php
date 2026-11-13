@@ -50,6 +50,31 @@ class CommunicationSettings
             // so secrets stay in the correct group.
             $known = Setting::where('group', $group)->pluck('key')->all();
 
+            if ($group === 'general') {
+                $known = array_values(array_unique(array_merge($known, [
+                    'company_name',
+                    'legal_name',
+                    'tagline',
+                    'registration_no',
+                    'tax_id',
+                    'primary_email',
+                    'support_email',
+                    'phone_number',
+                    'secondary_phone',
+                    'farm_location',
+                    'head_office',
+                    'currency',
+                    'currency_symbol',
+                    'timezone',
+                    'date_format',
+                    'time_format',
+                    'fiscal_year_start',
+                    'operating_hours',
+                    'site_logo',
+                    'site_favicon',
+                ])));
+            }
+
             if ($group === 'email') {
                 $known = array_values(array_unique(array_merge($known, [
                     'mail_mailer',

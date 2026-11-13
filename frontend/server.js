@@ -67,6 +67,49 @@ app.use('/api', (req, res) => {
   }
 });
 
+// Proxy /storage requests to backend for uploaded brand assets & files
+app.use('/storage', (req, res) => {
+  try {
+    const targetUrl = new URL(BACKEND_URL + '/storage' + req.url);
+    const client = targetUrl.protocol === 'https:' ? https : http;
+
+    const headers = { ...req.headers, host: targetUrl.host };
+    delete headers['content-length'];
+
+    for (const key of Object.keys(headers)) {
+      if (
+        key.startsWith('cf-') ||
+        key === 'cdn-loop' ||
+        key === 'x-forwarded-for' ||
+        key === 'x-forwarded-proto' ||
+        key === 'x-real-ip'
+      ) {
+        delete headers[key];
+      }
+    }
+
+    const proxyReq = client.request(
+      targetUrl,
+      {
+        method: req.method,
+        headers: headers,
+      },
+      (proxyRes) => {
+        res.writeHead(proxyRes.statusCode, proxyRes.headers);
+        proxyRes.pipe(res);
+      }
+    );
+
+    proxyReq.on('error', () => {
+      res.status(404).end();
+    });
+
+    req.pipe(proxyReq);
+  } catch (err) {
+    res.status(404).end();
+  }
+});
+
 // Serve Angular built files from dist/frontend/browser
 const distPath = path.join(__dirname, 'dist', 'frontend', 'browser');
 app.use(express.static(distPath));

@@ -511,6 +511,17 @@ class SettingsController extends Controller
         if (! Setting::where('key', 'company_name')->exists()) {
             app(SettingSeeder::class)->run();
         }
+        foreach (['site_logo', 'site_favicon'] as $brandKey) {
+            if (! Setting::where('key', $brandKey)->exists()) {
+                Setting::create([
+                    'group' => 'general',
+                    'key' => $brandKey,
+                    'value' => '',
+                    'type' => 'string',
+                    'description' => "Uploaded brand {$brandKey}",
+                ]);
+            }
+        }
     }
 
     private function getBackupsDirectory(): string
@@ -531,35 +542,98 @@ class SettingsController extends Controller
     }
 
     /**
+     * Publicly serve brand asset (logo or favicon) with proper binary content-type.
+     */
+    public function getBrandAsset(string $key): \Illuminate\Http\Response
+    {
+        $settingKey = $key === 'favicon' ? 'site_favicon' : 'site_logo';
+        $val = Setting::get($settingKey);
+
+        if (! $val) {
+            return response('', 404);
+        }
+
+        if (str_starts_with($val, 'data:image/')) {
+            $parts = explode(',', $val, 2);
+            preg_match('/^data:(image\/[^;]+);base64/', $parts[0], $matches);
+            $mime = $matches[1] ?? 'image/png';
+            $binary = base64_decode($parts[1] ?? '');
+            return response($binary, 200)
+                ->header('Content-Type', $mime)
+                ->header('Cache-Control', 'public, max-age=86400');
+        }
+
+        if (str_starts_with($val, '/storage/')) {
+            $rel = ltrim(str_replace('/storage', '', $val), '/');
+            if (Storage::disk('public')->exists($rel)) {
+                return response(Storage::disk('public')->get($rel), 200)
+                    ->header('Content-Type', Storage::disk('public')->mimeType($rel) ?: 'image/png')
+                    ->header('Cache-Control', 'public, max-age=86400');
+            }
+        }
+
+        return response('', 404);
+    }
+
+    /**
      * Upload a brand asset (logo/favicon), replace any previously stored file,
-     * persist its public URL as a setting, and return that URL.
+     * persist its Data URI & public URL as a setting, and return that URL.
      */
     private function uploadBrandAsset(Request $request, string $inputName, string $settingKey, int $maxBytes, array $allowedExtensions): JsonResponse
     {
-        $request->validate([
-            $inputName => ['required', 'file', 'max:' . $maxBytes, 'mimes:' . implode(',', $allowedExtensions)],
-        ]);
-
         $file = $request->file($inputName);
         if (! $file || ! $file->isValid()) {
-            return response()->json(['success' => false, 'message' => 'Invalid file upload.'], 400);
+            return response()->json(['success' => false, 'message' => 'No file received or invalid upload.'], 400);
         }
 
-        // Delete the previously stored file, if any.
+        if ($file->getSize() > $maxBytes) {
+            $mb = round($maxBytes / (1024 * 1024), 1);
+            return response()->json(['success' => false, 'message' => "File exceeds maximum size of {$mb} MB."], 422);
+        }
+
+        $extension = strtolower($file->getClientOriginalExtension());
+        if (! in_array($extension, $allowedExtensions, true)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid file type. Allowed formats: ' . strtoupper(implode(', ', $allowedExtensions)),
+            ], 422);
+        }
+
+        // Delete the previously stored file from disk if it was stored as a path.
         $previous = Setting::get($settingKey);
         if ($previous && is_string($previous) && str_starts_with($previous, '/storage/')) {
-            $previousPath = ltrim(str_replace('/storage', '', $previous), '/');
-            Storage::disk('public')->delete($previousPath);
+            try {
+                $previousPath = ltrim(str_replace('/storage', '', $previous), '/');
+                Storage::disk('public')->delete($previousPath);
+            } catch (\Throwable $e) {
+                // Ignore cleanup errors
+            }
         }
 
-        $storedPath = $file->store('uploads/settings', 'public'); // storage/app/public/uploads/settings/{hash}.{ext}
-        $url = '/storage/' . $storedPath;
+        // Generate self-contained Data URI so the image is immediately viewable,
+        // persistent across container restarts, and requires zero web-server symlinks.
+        $mime = $file->getMimeType() ?: 'image/' . $extension;
+        if ($extension === 'svg') $mime = 'image/svg+xml';
+        if ($extension === 'ico') $mime = 'image/x-icon';
 
-        Setting::set($settingKey, $url, 'general', 'string');
+        $fileContent = @file_get_contents($file->getRealPath());
+        if ($fileContent === false) {
+            return response()->json(['success' => false, 'message' => 'Failed to read file.'], 500);
+        }
+        $dataUri = 'data:' . $mime . ';base64,' . base64_encode($fileContent);
+
+        // Also store on public disk for endpoints that prefer file URLs
+        try {
+            $file->store('uploads/settings', 'public');
+        } catch (\Throwable $e) {
+            Log::warning('Disk storage skipped for brand asset: ' . $e->getMessage());
+        }
+
+        Setting::set($settingKey, $dataUri, 'general', 'string');
 
         return response()->json([
             'success' => true,
-            'url' => $url,
+            'url' => $dataUri,
             'message' => ucfirst($inputName) . ' uploaded successfully.',
         ]);
     }

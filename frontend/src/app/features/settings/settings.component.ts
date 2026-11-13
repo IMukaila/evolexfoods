@@ -504,6 +504,12 @@ export class SettingsComponent implements OnInit {
   }
 
   saveSettings(): void {
+    if (this.logoFile && !this.logoUploading) {
+      this.uploadLogo();
+    }
+    if (this.faviconFile && !this.faviconUploading) {
+      this.uploadFavicon();
+    }
     this.saving = true;
     this.settingsService.updateSettings(this.form).subscribe({
       next: (res) => {
@@ -874,8 +880,11 @@ export class SettingsComponent implements OnInit {
     const file = input.files?.[0];
     this.logoError = '';
     if (!file) return;
-    const allowed = ['image/png', 'image/jpeg', 'image/svg+xml', 'image/webp'];
-    if (!allowed.includes(file.type)) {
+
+    const ext = file.name.split('.').pop()?.toLowerCase() || '';
+    const validExts = ['png', 'jpg', 'jpeg', 'svg', 'webp'];
+    const validMimes = ['image/png', 'image/jpeg', 'image/jpg', 'image/pjpeg', 'image/svg+xml', 'image/webp'];
+    if (!validExts.includes(ext) && !validMimes.includes(file.type)) {
       this.logoError = 'Only PNG, JPG, SVG, or WebP files are allowed.';
       return;
     }
@@ -883,10 +892,16 @@ export class SettingsComponent implements OnInit {
       this.logoError = 'Logo must be under 2 MB.';
       return;
     }
+
     this.logoFile = file;
     const reader = new FileReader();
-    reader.onload = (e) => { this.logoPreview = e.target?.result as string; };
+    reader.onload = (e) => {
+      this.logoPreview = e.target?.result as string;
+    };
     reader.readAsDataURL(file);
+
+    // Auto-upload immediately on file selection for seamless UX
+    this.uploadLogo();
   }
 
   onFaviconSelected(event: Event): void {
@@ -894,8 +909,11 @@ export class SettingsComponent implements OnInit {
     const file = input.files?.[0];
     this.faviconError = '';
     if (!file) return;
-    const allowed = ['image/png', 'image/x-icon', 'image/vnd.microsoft.icon', 'image/svg+xml'];
-    if (!allowed.includes(file.type)) {
+
+    const ext = file.name.split('.').pop()?.toLowerCase() || '';
+    const validExts = ['png', 'ico', 'svg', 'jpg', 'jpeg'];
+    const validMimes = ['image/png', 'image/x-icon', 'image/vnd.microsoft.icon', 'image/ico', 'image/svg+xml', 'image/jpeg'];
+    if (!validExts.includes(ext) && !validMimes.includes(file.type)) {
       this.faviconError = 'Only PNG, ICO, or SVG files are allowed for favicon.';
       return;
     }
@@ -903,10 +921,16 @@ export class SettingsComponent implements OnInit {
       this.faviconError = 'Favicon must be under 512 KB.';
       return;
     }
+
     this.faviconFile = file;
     const reader = new FileReader();
-    reader.onload = (e) => { this.faviconPreview = e.target?.result as string; };
+    reader.onload = (e) => {
+      this.faviconPreview = e.target?.result as string;
+    };
     reader.readAsDataURL(file);
+
+    // Auto-upload immediately on file selection for seamless UX
+    this.uploadFavicon();
   }
 
   uploadLogo(): void {
@@ -962,13 +986,14 @@ export class SettingsComponent implements OnInit {
   }
 
   clearFavicon(): void {
-    if (this.faviconPreview?.startsWith('/storage/')) {
+    if (this.faviconPreview && (this.faviconPreview.startsWith('data:image/') || this.faviconPreview.startsWith('/storage/'))) {
       this.removeFavicon();
       return;
     }
-    this.faviconPreview = null;
+    this.faviconPreview = 'assets/favicon.svg';
     this.faviconFile = null;
     this.faviconError = '';
+    this.form.general.site_favicon = '';
   }
 
   removeLogo(): void {
