@@ -25,6 +25,19 @@ class Animal extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::deleting(function (Animal $animal) {
+            $animal->events()->delete();
+            $animal->pregnancies()->delete();
+            $animal->healthRecords()->delete();
+            $animal->treatments()->delete();
+            $animal->deaths()->delete();
+            $animal->births()->delete();
+            Weight::where('animal_id', $animal->id)->delete();
+        });
+    }
+
     public function location(): BelongsTo
     {
         return $this->belongsTo(Location::class);

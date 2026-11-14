@@ -127,19 +127,30 @@ class CrudController extends Controller
         return response()->json($record->fresh($config['with'] ?? []));
     }
 
-    public function destroy(Request $request, string $resource, int $id): JsonResponse
+    public function destroy(Request|string $request, string|int $resource, ?int $id = null): JsonResponse
     {
-        $config = $this->config($resource);
-        $record = $config['model']::findOrFail($id);
-        $invoiceId = $resource === 'payments' ? (int) $record->invoice_id : null;
+        if (is_string($request)) {
+            // Called without request: destroy('livestock', $id)
+            $actualResource = $request;
+            $actualId = (int) $resource;
+            $actualRequest = request();
+        } else {
+            $actualResource = (string) $resource;
+            $actualId = (int) $id;
+            $actualRequest = $request;
+        }
 
-        if ($resource === 'invoices' && Payment::where('invoice_id', $record->id)->exists()) {
+        $config = $this->config($actualResource);
+        $record = $config['model']::findOrFail($actualId);
+        $invoiceId = $actualResource === 'payments' ? (int) $record->invoice_id : null;
+
+        if ($actualResource === 'invoices' && Payment::where('invoice_id', $record->id)->exists()) {
             return response()->json([
                 'message' => 'This invoice has a payment history and cannot be deleted. Keep it for accounting records.',
             ], 409);
         }
 
-        $this->audit($request, $resource.'.deleted', $record);
+        $this->audit($actualRequest, $actualResource.'.deleted', $record);
 
         try {
             $record->delete();
@@ -149,7 +160,7 @@ class CrudController extends Controller
             ], 409);
         }
 
-        if ($resource === 'payments') {
+        if ($actualResource === 'payments') {
             $this->syncInvoicePaymentStatus($invoiceId);
         }
 

@@ -68,7 +68,7 @@ Route::prefix('v1')->group(function () {
         Route::post('/livestock', fn (\Illuminate\Http\Request $req) => app(CrudController::class)->store($req, 'livestock'));
         Route::get('/livestock/{id}', [LivestockController::class, 'show']);
         Route::put('/livestock/{id}', fn (\Illuminate\Http\Request $req, int $id) => app(CrudController::class)->update($req, 'livestock', $id));
-        Route::delete('/livestock/{id}', fn (int $id) => app(CrudController::class)->destroy('livestock', $id));
+        Route::delete('/livestock/{id}', fn (\Illuminate\Http\Request $req, int $id) => app(CrudController::class)->destroy($req, 'livestock', $id));
 
         Route::get('/feed/summary', [FeedInventoryController::class, 'feedSummary']);
         Route::get('/feed/days-remaining', [FeedInventoryController::class, 'daysRemaining']);
