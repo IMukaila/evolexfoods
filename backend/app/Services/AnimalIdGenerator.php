@@ -26,13 +26,25 @@ class AnimalIdGenerator
     /** Normalise free-text species input to a canonical key. */
     public static function normaliseSpecies(?string $species): string
     {
-        $key = strtolower(trim((string) $species));
+        $raw = strtolower(trim((string) $species));
 
-        return match ($key) {
+        if (str_contains($raw, 'goat') || str_contains($raw, 'ev-gt') || $raw === 'gt') {
+            return 'goat';
+        }
+
+        if (str_contains($raw, 'sheep') || str_contains($raw, 'ev-sh') || $raw === 'sh') {
+            return 'sheep';
+        }
+
+        if (str_contains($raw, 'catt') || str_contains($raw, 'cow') || str_contains($raw, 'bovin') || str_contains($raw, 'ev-ct') || $raw === 'ct') {
+            return 'cattle';
+        }
+
+        return match ($raw) {
             'goats' => 'goat',
             'sheeps' => 'sheep',
             'cow', 'cows', 'bovine' => 'cattle',
-            default => $key,
+            default => $raw,
         };
     }
 
@@ -67,6 +79,7 @@ class AnimalIdGenerator
      */
     public function peek(string $species): string
     {
+        $species = self::normaliseSpecies($species);
         $prefix = self::prefixFor($species);
 
         $stored = (int) (AnimalIdSequence::where('prefix', $prefix)->value('last_number') ?? 0);
@@ -119,5 +132,42 @@ class AnimalIdGenerator
         }
 
         return $highest;
+    }
+
+    /**
+     * Record an issued or manual Animal ID so the sequence counter stays
+     * monotonically increasing and never collides or rewinds.
+     */
+    public function recordIssued(string $species, string $animalId): void
+    {
+        $species = self::normaliseSpecies($species);
+        if (! self::supports($species)) {
+            return;
+        }
+
+        $prefix = self::prefixFor($species);
+        if (! str_starts_with($animalId, $prefix.'-')) {
+            return;
+        }
+
+        $suffix = substr($animalId, strlen($prefix) + 1);
+        if (! is_numeric($suffix)) {
+            return;
+        }
+
+        $number = (int) $suffix;
+
+        DB::transaction(function () use ($species, $prefix, $number) {
+            $sequence = AnimalIdSequence::query()
+                ->lockForUpdate()
+                ->firstOrCreate(
+                    ['prefix' => $prefix],
+                    ['species' => $species, 'last_number' => 0]
+                );
+
+            if ($number > (int) $sequence->last_number) {
+                $sequence->forceFill(['species' => $species, 'last_number' => $number])->save();
+            }
+        });
     }
 }

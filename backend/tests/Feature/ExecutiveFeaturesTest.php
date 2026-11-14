@@ -61,6 +61,16 @@ class ExecutiveFeaturesTest extends TestCase
         $kid->delete();
         $this->assertSame('EV-GT-000003', $generator->next('goats'));
         $this->assertSame('EV-GT-000001', $dam->animal_id);
+
+        // Species variants like (Goat. EV-GT), (Sheep. EV-SH), (Cattle. EV-CT)
+        $this->assertSame('goat', AnimalIdGenerator::normaliseSpecies('Goat. EV-GT'));
+        $this->assertSame('sheep', AnimalIdGenerator::normaliseSpecies('Sheep. EV-SH'));
+        $this->assertSame('cattle', AnimalIdGenerator::normaliseSpecies('Cattle. EV-CT'));
+
+        // recordIssued advances sequence monotonically
+        $generator->recordIssued('sheep', 'EV-SH-000005');
+        $this->assertSame('EV-SH-000006', $generator->peek('sheep'));
+        $this->assertSame('EV-SH-000006', $generator->next('sheep'));
     }
 
     public function test_birth_registers_a_litter_closes_the_pregnancy_and_reopens_the_dam(): void

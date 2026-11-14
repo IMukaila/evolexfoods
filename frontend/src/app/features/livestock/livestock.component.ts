@@ -105,6 +105,10 @@ export class LivestockComponent implements OnInit {
   nextIdPreview = '';
   nextIdSpecies = '';
 
+  loadingNextId = false;
+  modalSaving = false;
+  modalError = '';
+
   constructor(private api: ApiService, private router: Router) {}
 
   ngOnInit(): void {
@@ -161,17 +165,38 @@ export class LivestockComponent implements OnInit {
     }
   }
 
-  /** Preview the next auto-generated EV-… ID without consuming it. */
-  previewNextId(species: string): void {
+  /** Preview the next auto-generated EV-… ID without consuming it and sync with modalAnimal. */
+  previewNextId(species?: string): void {
+    if (!species) return;
     this.nextIdSpecies = species;
+    this.loadingNextId = true;
     this.api.get<any>('/livestock/next-id', { species }).subscribe({
       next: (d) => {
+        this.loadingNextId = false;
         if (this.nextIdSpecies === species) {
-          this.nextIdPreview = d?.next_animal_id || '';
+          const nextId = d?.next_animal_id || this.getFallbackId(species);
+          this.nextIdPreview = nextId;
+          if (!this.isEditing) {
+            this.modalAnimal.animal_id = nextId;
+          }
         }
       },
-      error: () => (this.nextIdPreview = '')
+      error: () => {
+        this.loadingNextId = false;
+        const fallback = this.getFallbackId(species);
+        this.nextIdPreview = fallback;
+        if (!this.isEditing) {
+          this.modalAnimal.animal_id = fallback;
+        }
+      }
     });
+  }
+
+  getFallbackId(species: string): string {
+    const s = (species || '').toLowerCase();
+    if (s.includes('sheep') || s.includes('sh')) return 'EV-SH-000001';
+    if (s.includes('catt') || s.includes('cow') || s.includes('ct')) return 'EV-CT-000001';
+    return 'EV-GT-000001';
   }
 
   addKid(): void {
@@ -392,8 +417,11 @@ export class LivestockComponent implements OnInit {
 
   addNew(): void {
     this.isEditing = false;
+    this.modalError = '';
+    this.modalSaving = false;
     this.modalAnimal = {
       species: 'goat',
+      animal_id: 'EV-GT-000001',
       sex: 'female',
       health_status: 'healthy',
       status: 'alive',
@@ -406,6 +434,8 @@ export class LivestockComponent implements OnInit {
 
   editAnimal(animal: Animal): void {
     this.isEditing = true;
+    this.modalError = '';
+    this.modalSaving = false;
     this.modalAnimal = {
       id: animal.id,
       animal_id: animal.animal_id,
@@ -426,24 +456,47 @@ export class LivestockComponent implements OnInit {
   closeModal(): void {
     this.showModal = false;
     this.modalAnimal = {};
+    this.modalError = '';
+    this.modalSaving = false;
   }
 
   saveAnimal(): void {
+    if (!this.modalAnimal.species) {
+      this.modalError = 'Species is required.';
+      return;
+    }
+    if (!this.modalAnimal.animal_id) {
+      this.modalError = 'Animal ID is required.';
+      return;
+    }
+
+    this.modalSaving = true;
+    this.modalError = '';
+
     if (this.isEditing && this.modalAnimal.id) {
       this.api.put(`/livestock/${this.modalAnimal.id}`, this.modalAnimal).subscribe({
         next: () => {
+          this.modalSaving = false;
           this.closeModal();
           this.load();
         },
-        error: (err) => alert(err.error?.message || 'Error updating animal')
+        error: (err) => {
+          this.modalSaving = false;
+          this.modalError = err.error?.message || (err.error?.errors ? Object.values(err.error.errors).flat().join(' ') : 'Error updating animal');
+        }
       });
     } else {
       this.api.post('/livestock', this.modalAnimal).subscribe({
         next: () => {
+          this.modalSaving = false;
           this.closeModal();
           this.load();
+          this.loadHerdAnimals();
         },
-        error: (err) => alert(err.error?.message || 'Error adding animal')
+        error: (err) => {
+          this.modalSaving = false;
+          this.modalError = err.error?.message || (err.error?.errors ? Object.values(err.error.errors).flat().join(' ') : 'Error adding animal');
+        }
       });
     }
   }

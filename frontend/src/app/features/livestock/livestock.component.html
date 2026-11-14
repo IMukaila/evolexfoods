@@ -377,31 +377,59 @@
   <div class="modal-backdrop" *ngIf="showModal" (click)="closeModal()">
     <div class="modal-card" (click)="$event.stopPropagation()">
       <div class="modal-header">
-        <h3>{{ isEditing ? 'Edit Animal' : 'Add New Animal' }}</h3>
+        <div>
+          <h3 style="margin: 0;">{{ isEditing ? 'Edit Animal' : 'Add New Animal' }}</h3>
+          <p class="muted" style="margin: 4px 0 0; font-size: 13px;" *ngIf="!isEditing">
+            Adding to Livestock Master. Animal ID increments automatically based on Species (§10).
+          </p>
+        </div>
         <button class="btn-close" (click)="closeModal()">&times;</button>
       </div>
+
+      <div class="alert alert-danger" *ngIf="modalError" style="margin: 16px 24px 0;">
+        {{ modalError }}
+      </div>
+
       <form (ngSubmit)="saveAnimal()">
         <div class="modal-body form-grid">
           <div class="form-group">
-            <label>Animal ID</label>
-            <input [(ngModel)]="modalAnimal.animal_id" name="animal_id" placeholder="Auto-generated if empty" />
+            <label>Species *</label>
+            <select [(ngModel)]="modalAnimal.species" (ngModelChange)="onSpeciesChange()" name="species" required>
+              <option value="goat">Goat (EV-GT)</option>
+              <option value="sheep">Sheep (EV-SH)</option>
+              <option value="cattle">Cattle (EV-CT)</option>
+            </select>
+            <small class="field-hint" *ngIf="!isEditing">
+              Select species to set prefix: Goat (EV-GT), Sheep (EV-SH), Cattle (EV-CT).
+            </small>
           </div>
+
+          <div class="form-group">
+            <label>Animal ID *</label>
+            <div class="id-input-wrapper">
+              <input [(ngModel)]="modalAnimal.animal_id" name="animal_id" placeholder="e.g. EV-GT-000001" required class="font-mono" />
+              <button *ngIf="!isEditing" type="button" class="btn-refresh-id" (click)="previewNextId(modalAnimal.species || 'goat')" title="Refresh ID sequence">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                </svg>
+              </button>
+            </div>
+            <small class="field-hint" *ngIf="!isEditing">
+              <span *ngIf="loadingNextId" class="text-muted">Fetching next ID...</span>
+              <span *ngIf="!loadingNextId">Auto-generated sequential ID: <strong>{{ modalAnimal.animal_id || nextIdPreview }}</strong></span>
+            </small>
+          </div>
+
           <div class="form-group">
             <label>Tag ID</label>
             <input [(ngModel)]="modalAnimal.tag_id" name="tag_id" placeholder="e.g. TAG-0012" />
           </div>
-          <div class="form-group">
-            <label>Species *</label>
-            <select [(ngModel)]="modalAnimal.species" (ngModelChange)="onSpeciesChange()" name="species" required>
-              <option value="goat">Goat · EV-GT</option>
-              <option value="sheep">Sheep · EV-SH</option>
-              <option value="cattle">Cattle · EV-CT</option>
-            </select>
-          </div>
+
           <div class="form-group">
             <label>Breed</label>
             <input [(ngModel)]="modalAnimal.breed" name="breed" placeholder="e.g. Boer, Dorper, Angus" />
           </div>
+
           <div class="form-group">
             <label>Sex *</label>
             <select [(ngModel)]="modalAnimal.sex" name="sex" required>
@@ -409,10 +437,12 @@
               <option value="male">Male</option>
             </select>
           </div>
+
           <div class="form-group">
             <label>Date of Birth</label>
             <input type="date" [(ngModel)]="modalAnimal.dob" name="dob" />
           </div>
+
           <div class="form-group">
             <label>Location</label>
             <select [(ngModel)]="modalAnimal.location_id" name="location_id">
@@ -420,10 +450,12 @@
               <option *ngFor="let loc of locationsList" [ngValue]="loc.id">{{ loc.name }}</option>
             </select>
           </div>
+
           <div class="form-group">
             <label>Weight (kg)</label>
             <input type="number" [(ngModel)]="modalAnimal.weight" name="weight" placeholder="e.g. 45.5" />
           </div>
+
           <div class="form-group">
             <label>Health Status</label>
             <select [(ngModel)]="modalAnimal.health_status" name="health_status">
@@ -433,6 +465,7 @@
               <option value="under treatment">Under Treatment</option>
             </select>
           </div>
+
           <div class="form-group">
             <label>Status</label>
             <select [(ngModel)]="modalAnimal.status" name="status">
@@ -442,14 +475,19 @@
               <option value="transferred">Transferred</option>
             </select>
           </div>
+
           <div class="form-group full-width">
             <label>Notes</label>
             <textarea [(ngModel)]="modalAnimal.notes" name="notes" rows="2" placeholder="Additional observations..."></textarea>
           </div>
         </div>
+
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" (click)="closeModal()">Cancel</button>
-          <button type="submit" class="btn btn-primary">{{ isEditing ? 'Save Changes' : 'Create Animal' }}</button>
+          <button type="button" class="btn btn-secondary" (click)="closeModal()" [disabled]="modalSaving">Cancel</button>
+          <button type="submit" class="btn btn-primary" [disabled]="modalSaving || !modalAnimal.animal_id || !modalAnimal.species">
+            <span *ngIf="modalSaving" class="spinner-sm"></span>
+            <span>{{ isEditing ? 'Save Changes' : 'Create Animal' }}</span>
+          </button>
         </div>
       </form>
     </div>

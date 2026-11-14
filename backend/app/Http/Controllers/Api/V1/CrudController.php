@@ -79,7 +79,11 @@ class CrudController extends Controller
     public function store(Request $request, string $resource): JsonResponse
     {
         $config = $this->config($resource);
-        $data = $request->validate($config['rules']);
+        $rules = $config['rules'];
+        if ($resource === 'livestock') {
+            $rules['animal_id'] = 'nullable|string|max:40|unique:animals,animal_id';
+        }
+        $data = $request->validate($rules);
         $data = $this->beforeSave($resource, $data, $request, null);
         $record = $config['model']::create($data);
         $this->audit($request, $resource.'.created', $record);
@@ -100,7 +104,11 @@ class CrudController extends Controller
         $config = $this->config($resource);
         $record = $config['model']::findOrFail($id);
         $previousInvoiceId = $resource === 'payments' ? (int) $record->invoice_id : null;
-        $data = $request->validate($config['rules']);
+        $rules = $config['rules'];
+        if ($resource === 'livestock') {
+            $rules['animal_id'] = 'nullable|string|max:40|unique:animals,animal_id,'.$id;
+        }
+        $data = $request->validate($rules);
         $data = $this->beforeSave($resource, $data, $request, $record);
         $record->update($data);
         $this->audit($request, $resource.'.updated', $record);
@@ -177,11 +185,14 @@ class CrudController extends Controller
             $data['status'] = $data['status'] ?? 'alive';
             $data['current_status'] = $data['current_status'] ?? 'active';
             $data['health_status'] = $data['health_status'] ?? 'healthy';
-        }
 
-        if ($resource === 'procurement') {
-            $data['requested_by'] = $data['requested_by'] ?? $request->user()?->id;
-            $data['status'] = $data['status'] ?? 'pending';
+            if (empty($data['animal_id'])) {
+                // Automated Animal ID sequencing (§10) — sequence-table backed,
+                // never reuses an ID (replaces the old count()+1 allocation).
+                $data['animal_id'] = app(\App\Services\AnimalIdGenerator::class)->next($data['species'] ?? 'goat');
+            } else {
+                app(\App\Services\AnimalIdGenerator::class)->recordIssued($data['species'] ?? 'goat', $data['animal_id']);
+            }
         }
 
         if ($resource === 'maintenance') {
@@ -194,12 +205,6 @@ class CrudController extends Controller
             foreach (['reach', 'views', 'followers', 'website_visits', 'leads', 'engagement_rate'] as $metric) {
                 $data[$metric] = $data[$metric] ?? 0;
             }
-        }
-
-        if ($resource === 'livestock' && empty($data['animal_id'])) {
-            // Automated Animal ID sequencing (§10) — sequence-table backed,
-            // never reuses an ID (replaces the old count()+1 allocation).
-            $data['animal_id'] = app(\App\Services\AnimalIdGenerator::class)->next($data['species'] ?? 'goat');
         }
 
         if ($resource === 'procurement') {

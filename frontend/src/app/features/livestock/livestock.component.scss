@@ -677,6 +677,75 @@
       box-shadow: 0 0 0 3px rgba(52, 92, 64, 0.1);
     }
   }
+
+  .id-input-wrapper {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+
+    input {
+      flex: 1;
+      font-family: var(--font-mono, monospace);
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+
+    .btn-refresh-id {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      padding: 0;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--surface);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s ease;
+
+      &:hover {
+        color: var(--moss);
+        border-color: var(--moss);
+        background: var(--surface-mute);
+      }
+
+      svg {
+        width: 16px;
+        height: 16px;
+      }
+    }
+  }
+
+  .field-hint {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 2px;
+
+    strong {
+      color: var(--moss);
+      font-weight: 700;
+      font-family: var(--font-mono, monospace);
+    }
+  }
+}
+
+.spinner-sm {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .details-grid {
