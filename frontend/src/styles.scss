@@ -563,3 +563,70 @@ html:has(.shell.dark-mode) body {
 .search-permissions .form-control {
   padding-left: 44px !important;
 }
+
+/* Global Print Isolation for Invoices & Official Documents */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm 12mm;
+  }
+
+  /* Hide the rest of the application when printing */
+  app-sidebar,
+  .app-sidebar,
+  .sidebar,
+  .top-header,
+  header.app-header,
+  app-finance-nav,
+  .finance-nav,
+  .page-heading,
+  .summary-grid,
+  .analysis-grid,
+  .register-panel,
+  .context-note,
+  .invoice-toolbar,
+  .modal-close,
+  .no-print,
+  button,
+  .refresh-button {
+    display: none !important;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #1c2e1f !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .invoices-page > *:not(.modal-backdrop--preview) {
+    display: none !important;
+  }
+
+  .modal-backdrop--preview {
+    position: static !important;
+    inset: auto !important;
+    background: transparent !important;
+    padding: 0 !important;
+    display: block !important;
+  }
+
+  .modal-card--invoice {
+    border: none !important;
+    box-shadow: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: #ffffff !important;
+  }
+
+  .invoice-sheet {
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+}
+

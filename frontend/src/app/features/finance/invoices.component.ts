@@ -186,11 +186,411 @@ export class InvoicesComponent implements OnInit {
   printInvoice(invoice?: FinanceInvoice): void {
     const target = invoice || this.previewInvoice;
     if (!target) return;
-    this.previewInvoice = target;
-    this.modal = 'preview';
-    setTimeout(() => {
+
+    // Remove any previous print frame
+    const existing = document.getElementById('invoice-print-frame');
+    if (existing) {
+      existing.remove();
+    }
+
+    const iframe = document.createElement('iframe');
+    iframe.id = 'invoice-print-frame';
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    iframe.style.visibility = 'hidden';
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentWindow?.document;
+    if (!doc) {
       window.print();
-    }, 150);
+      return;
+    }
+
+    const html = this.generateInvoicePrintHtml(target);
+    doc.open();
+    doc.write(html);
+    doc.close();
+
+    // Give browser time to parse styles and fonts, then trigger print
+    setTimeout(() => {
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      } catch {
+        window.print();
+      }
+    }, 250);
+  }
+
+  generateInvoicePrintHtml(invoice: FinanceInvoice): string {
+    const balance = this.outstandingBalance(invoice);
+    const totalPaid = this.totalPaid(invoice);
+    const totalAmount = Number(invoice.amount);
+    const statusKey = this.displayStatus(invoice);
+    const statusText = this.statusLabel(invoice).toUpperCase();
+
+    const statusColors: Record<string, { bg: string; text: string; border: string }> = {
+      paid: { bg: '#e8f5e9', text: '#1b5e20', border: '#a5d6a7' },
+      overdue: { bg: '#ffebee', text: '#b71c1c', border: '#ef9a9a' },
+      partial: { bg: '#e3f2fd', text: '#0d47a1', border: '#90caf9' },
+      unpaid: { bg: '#fff8e1', text: '#e65100', border: '#ffe082' }
+    };
+    const colors = statusColors[statusKey] || statusColors['unpaid'];
+
+    const supplier = invoice.supplier;
+    const suppName = this.supplierName(invoice);
+    const contactParts: string[] = [];
+    if (supplier?.code) contactParts.push(`Vendor Code: ${supplier.code}`);
+    if (supplier?.contact_name) contactParts.push(`Contact: ${supplier.contact_name}`);
+    if (supplier?.phone) contactParts.push(`Phone: ${supplier.phone}`);
+    if (supplier?.email) contactParts.push(`Email: ${supplier.email}`);
+    if (supplier?.location) contactParts.push(`Location: ${supplier.location}`);
+    const supplierInfoHtml = contactParts.map(p => `<p class="party-line">${p}</p>`).join('');
+
+    let paymentsHtml = '';
+    if (invoice.payments?.length) {
+      paymentsHtml = `
+        <div class="payments-section">
+          <p class="section-title">Payment History</p>
+          <table class="subtable">
+            <thead>
+              <tr><th>Date</th><th>Method</th><th>Reference</th><th class="text-right">Amount</th></tr>
+            </thead>
+            <tbody>
+              ${invoice.payments.map(p => `
+                <tr>
+                  <td>${this.formatDate(p.paid_at)}</td>
+                  <td>${(p.method || 'Payment').replace('_', ' ')}</td>
+                  <td>${p.reference || '—'}</td>
+                  <td class="text-right text-success"><strong>${this.formatCurrency(p.amount)}</strong></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Invoice ${invoice.invoice_number}</title>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 12mm 15mm;
+    }
+    * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #1c2e1f;
+      background: #ffffff;
+      margin: 0;
+      padding: 0;
+      font-size: 12.5px;
+      line-height: 1.45;
+    }
+    .sheet {
+      width: 100%;
+      max-width: 100%;
+      margin: 0 auto;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 2.5px solid #2f4a32;
+      padding-bottom: 16px;
+      margin-bottom: 20px;
+    }
+    .brand-block {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand-logo {
+      width: 44px;
+      height: 44px;
+      border-radius: 8px;
+      background: #2f4a32;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      font-weight: 900;
+    }
+    .brand-name {
+      margin: 0;
+      font-size: 22px;
+      color: #2f4a32;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+    .brand-sub {
+      margin: 2px 0 0;
+      color: #556b50;
+      font-size: 11.5px;
+      font-weight: 600;
+    }
+    .brand-meta {
+      margin: 2px 0 0;
+      color: #777777;
+      font-size: 10.5px;
+    }
+    .invoice-tag-block {
+      text-align: right;
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 5px 14px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      background: ${colors.bg};
+      color: ${colors.text};
+      border: 1px solid ${colors.border};
+    }
+    .invoice-number {
+      margin: 6px 0 0;
+      font-size: 15px;
+      font-weight: 800;
+      color: #1c2e1f;
+    }
+    .parties-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .party-card {
+      background: #faf9f5;
+      border: 1px solid #e3ddcd;
+      border-radius: 8px;
+      padding: 12px 14px;
+    }
+    .party-kicker {
+      margin: 0 0 5px;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #8a8578;
+      font-weight: 800;
+    }
+    .party-name {
+      margin: 0 0 4px;
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #1c2e1f;
+    }
+    .party-line {
+      margin: 2px 0;
+      font-size: 11.5px;
+      color: #555555;
+    }
+    .meta-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 3px 0;
+      font-size: 11.5px;
+      color: #555555;
+    }
+    .meta-row strong {
+      color: #1c2e1f;
+    }
+    .items-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 18px;
+      font-size: 12px;
+    }
+    .items-table th {
+      background: #2f4a32;
+      color: #ffffff;
+      padding: 9px 12px;
+      font-size: 10.5px;
+      text-transform: uppercase;
+      font-weight: 700;
+      text-align: left;
+    }
+    .items-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #e3ddcd;
+      color: #1c2e1f;
+    }
+    .sheet-bottom {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 18px;
+      align-items: start;
+      margin-bottom: 20px;
+    }
+    .payment-notes {
+      font-size: 11.5px;
+      color: #555555;
+      line-height: 1.5;
+    }
+    .section-title {
+      font-size: 10.5px;
+      text-transform: uppercase;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      color: #8a8578;
+      margin: 0 0 4px;
+    }
+    .banking-info {
+      margin-top: 6px;
+      padding: 8px 10px;
+      background: #faf9f5;
+      border: 1px solid #e3ddcd;
+      border-radius: 6px;
+      font-size: 11px;
+    }
+    .totals-box {
+      background: #fdfaf2;
+      border: 1px solid #d9d0bf;
+      border-radius: 8px;
+      padding: 12px 14px;
+      display: grid;
+      gap: 6px;
+      font-size: 12px;
+    }
+    .total-row {
+      display: flex;
+      justify-content: space-between;
+    }
+    .total-row--grand {
+      border-top: 1px solid #d9d0bf;
+      padding-top: 8px;
+      font-weight: 800;
+      font-size: 14px;
+    }
+    .payments-section {
+      margin-top: 16px;
+      border-top: 1px solid #e3ddcd;
+      padding-top: 14px;
+    }
+    .subtable {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11.5px;
+      margin-top: 6px;
+    }
+    .subtable th {
+      background: #f4efe4;
+      color: #555555;
+      padding: 6px 10px;
+      font-size: 10px;
+      text-transform: uppercase;
+      text-align: left;
+    }
+    .subtable td {
+      padding: 7px 10px;
+      border-bottom: 1px solid #f0ead9;
+    }
+    .text-right { text-align: right !important; }
+    .text-success { color: #1b5e20 !important; }
+    .text-alert { color: #b71c1c !important; }
+    .footer {
+      margin-top: 24px;
+      border-top: 1px solid #e3ddcd;
+      padding-top: 10px;
+      font-size: 10px;
+      color: #8a8578;
+      display: flex;
+      justify-content: space-between;
+    }
+  </style>
+</head>
+<body>
+  <div class="sheet">
+    <div class="header">
+      <div class="brand-block">
+        <div class="brand-logo">E</div>
+        <div>
+          <h1 class="brand-name">EVOLEX FOODS LTD</h1>
+          <p class="brand-sub">Agricultural Production &amp; Supply Chain Management</p>
+          <p class="brand-meta">Accra · Central Region, Ghana · finance@evolexfoods.com · +233 24 000 0000</p>
+        </div>
+      </div>
+      <div class="invoice-tag-block">
+        <span class="status-badge">${statusText}</span>
+        <div class="invoice-number">${invoice.invoice_number}</div>
+      </div>
+    </div>
+
+    <div class="parties-grid">
+      <div class="party-card">
+        <p class="party-kicker">Supplier / Billed From</p>
+        <p class="party-name">${suppName}</p>
+        ${supplierInfoHtml}
+      </div>
+      <div class="party-card">
+        <p class="party-kicker">Invoice Details</p>
+        <div class="meta-row"><span>Invoice Date:</span><strong>${this.formatDate(invoice.invoice_date)}</strong></div>
+        <div class="meta-row"><span>Payment Due:</span><strong class="${statusKey === 'overdue' ? 'text-alert' : ''}">${this.formatDate(invoice.due_date)}</strong></div>
+        <div class="meta-row"><span>Currency:</span><strong>GHS (Ghana Cedi)</strong></div>
+      </div>
+    </div>
+
+    <table class="items-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Description</th>
+          <th class="text-right">Qty</th>
+          <th class="text-right">Unit Price</th>
+          <th class="text-right">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td>Commercial Agricultural Supplies &amp; Deliveries (${invoice.invoice_number})</td>
+          <td class="text-right">1</td>
+          <td class="text-right">${this.formatCurrency(totalAmount)}</td>
+          <td class="text-right"><strong>${this.formatCurrency(totalAmount)}</strong></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="sheet-bottom">
+      <div class="payment-notes">
+        <p class="section-title">Payment terms &amp; instructions</p>
+        <p>Please quote <strong>${invoice.invoice_number}</strong> on all remittance advices and bank transfers.</p>
+        <div class="banking-info">
+          Bank: <strong>GCB Bank / Stanbic Bank Ghana</strong><br />
+          Account Name: <strong>Evolex Foods Ltd</strong><br />
+          Mobile Money: <strong>MTN MoMo Merchant</strong>
+        </div>
+      </div>
+
+      <div class="totals-box">
+        <div class="total-row"><span>Subtotal:</span><strong>${this.formatCurrency(totalAmount)}</strong></div>
+        <div class="total-row text-success"><span>Payments Cleared:</span><strong>- ${this.formatCurrency(totalPaid)}</strong></div>
+        <div class="total-row total-row--grand">
+          <span>Balance Due:</span>
+          <strong class="${balance > 0 ? 'text-alert' : 'text-success'}">${this.formatCurrency(balance)}</strong>
+        </div>
+      </div>
+    </div>
+
+    ${paymentsHtml}
+
+    <div class="footer">
+      <span>Evolex Foods Ltd · Supply Chain, Farm Operations &amp; Accounts Payable</span>
+      <span>Official System Record · evolexfoods.com</span>
+    </div>
+  </div>
+</body>
+</html>`;
   }
 
   downloadPdf(invoice: FinanceInvoice): void {
