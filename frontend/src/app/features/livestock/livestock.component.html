@@ -18,6 +18,14 @@
         </svg>
         Record Birth
       </button>
+      <button class="btn btn-outline-danger" (click)="openDeathModal()" title="Record Animal Death">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10" />
+          <line x1="15" y1="9" x2="9" y2="15" />
+          <line x1="9" y1="9" x2="15" y2="15" />
+        </svg>
+        Record Death
+      </button>
       <button class="btn btn-secondary" (click)="exportData()" title="Export Data">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5 5 5 5-5m-5 5V3" />
@@ -45,7 +53,7 @@
       <div class="label">Births</div>
       <div class="value">{{ births.count || 0 }}</div>
     </div>
-    <div class="kpi alert">
+    <div class="kpi alert kpi-clickable" (click)="filterByStatus('Dead')" title="Click to filter deceased animals in table">
       <div class="label">Deaths</div>
       <div class="value">{{ deaths.count || 0 }}</div>
     </div>
@@ -631,6 +639,69 @@
         <button type="button" class="btn btn-secondary" (click)="closeViewModal()">Close</button>
         <button type="button" class="btn btn-primary" (click)="editAnimal(viewingAnimal); closeViewModal()">Edit Record</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Record Death Modal -->
+  <div class="modal-backdrop" *ngIf="showDeathModal" (click)="closeDeathModal()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <h3 style="margin: 0; color: #b91c1c;">Record Animal Death</h3>
+          <p class="muted" style="margin: 4px 0 0; font-size: 13px;">
+            Log mortality event. The animal's status will be marked as dead, removed from active herd, and counted in mortality records.
+          </p>
+        </div>
+        <button class="btn-close" (click)="closeDeathModal()">&times;</button>
+      </div>
+
+      <div class="alert alert-danger" *ngIf="deathError" style="margin: 16px 24px 0;">
+        {{ deathError }}
+      </div>
+
+      <form (ngSubmit)="submitDeath()">
+        <div class="modal-body form-grid">
+          <div class="form-group full-width">
+            <label>Select Animal *</label>
+            <select [(ngModel)]="deathForm.animal_id" name="death_animal_id" required>
+              <option value="">Choose animal from herd...</option>
+              <option *ngFor="let animal of liveAnimals" [value]="animal.animal_id">
+                {{ animal.animal_id }} ({{ animal.species | titlecase }} · {{ animal.sex }})
+              </option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Date of Death *</label>
+            <input type="date" [(ngModel)]="deathForm.death_date" name="death_date" required />
+          </div>
+
+          <div class="form-group">
+            <label>Primary Cause *</label>
+            <select [(ngModel)]="deathForm.cause" name="death_cause" required>
+              <option value="Sickness">Sickness / Disease</option>
+              <option value="Natural Causes">Natural Causes / Old Age</option>
+              <option value="Injury">Injury / Trauma</option>
+              <option value="Predator Attack">Predator Attack</option>
+              <option value="Birthing Complications">Birthing Complications</option>
+              <option value="Unknown">Unknown / Other</option>
+            </select>
+          </div>
+
+          <div class="form-group full-width">
+            <label>Notes / Veterinary Observations</label>
+            <textarea [(ngModel)]="deathForm.notes" name="death_notes" rows="3" placeholder="Post-mortem observations, circumstances, or vet report..."></textarea>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" (click)="closeDeathModal()" [disabled]="deathSaving">Cancel</button>
+          <button type="submit" class="btn btn-danger" [disabled]="deathSaving || !deathForm.animal_id">
+            <span *ngIf="deathSaving" class="spinner-sm"></span>
+            <span>Confirm & Record Death</span>
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 </section>

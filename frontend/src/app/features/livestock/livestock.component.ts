@@ -133,6 +133,69 @@ export class LivestockComponent implements OnInit {
     return this.herdAnimals.filter((a) => (a.sex || '').toLowerCase() === 'male' && (a.status || 'alive') !== 'dead');
   }
 
+  get liveAnimals(): { id: number; animal_id: string; species?: string; sex?: string; status?: string }[] {
+    return this.herdAnimals.filter((a) => (a.status || 'alive').toLowerCase() !== 'dead');
+  }
+
+  // Death lifecycle event
+  showDeathModal = false;
+  deathSaving = false;
+  deathError = '';
+  deathForm: { animal_id: string; cause: string; notes: string; death_date: string } = {
+    animal_id: '',
+    cause: 'Sickness',
+    notes: '',
+    death_date: ''
+  };
+
+  openDeathModal(): void {
+    this.deathForm = {
+      animal_id: '',
+      cause: 'Sickness',
+      notes: '',
+      death_date: new Date().toISOString().slice(0, 10)
+    };
+    this.deathError = '';
+    this.showDeathModal = true;
+  }
+
+  closeDeathModal(): void {
+    this.showDeathModal = false;
+  }
+
+  submitDeath(): void {
+    if (!this.deathForm.animal_id) {
+      this.deathError = 'Please select an animal to record death.';
+      return;
+    }
+
+    this.deathSaving = true;
+    this.deathError = '';
+
+    this.api.post<any>('/livestock/events/death', {
+      animal_id: this.deathForm.animal_id,
+      cause: this.deathForm.cause,
+      notes: this.deathForm.notes
+    }).subscribe({
+      next: () => {
+        this.deathSaving = false;
+        this.closeDeathModal();
+        this.load();
+        this.loadHerdAnimals();
+      },
+      error: (err) => {
+        this.deathSaving = false;
+        this.deathError = err.error?.message || 'Failed to record animal death.';
+      }
+    });
+  }
+
+  filterByStatus(status: string): void {
+    this.filters.status = status;
+    this.showFilters = true;
+    this.search(1);
+  }
+
   openBirth(): void {
     this.birthForm = {
       mother_animal_id: '',

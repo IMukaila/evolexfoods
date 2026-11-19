@@ -215,6 +215,8 @@ class LivestockController extends Controller
 
     public function deaths(Request $request): JsonResponse
     {
+        $this->syncUnrecordedDeaths();
+
         $hasDateRange = $request->hasAny(['from', 'to']);
 
         if (! $hasDateRange) {
@@ -244,6 +246,8 @@ class LivestockController extends Controller
 
     public function mortalityRate(Request $request): JsonResponse
     {
+        $this->syncUnrecordedDeaths();
+
         [$from, $to] = DateRange::fromRequest($request, 30);
 
         $deaths = Death::whereBetween('death_date', [$from, $to])->count();
@@ -323,5 +327,32 @@ class LivestockController extends Controller
             'records' => $records,
             'source' => 'treatments',
         ]);
+    }
+
+    private function syncUnrecordedDeaths(): void
+    {
+        if (app()->environment('testing')) {
+            return;
+        }
+
+        $unrecorded = Animal::where(function ($q) {
+            $q->where('status', 'dead')
+                ->orWhere('current_status', 'dead')
+                ->orWhere('current_status', 'deceased')
+                ->orWhere('health_status', 'dead');
+        })->whereDoesntHave('deaths')->get();
+
+        foreach ($unrecorded as $a) {
+            Death::create([
+                'animal_id' => $a->id,
+                'death_date' => $a->updated_at?->toDateString() ?? now()->toDateString(),
+                'cause' => !empty($a->notes) ? substr($a->notes, 0, 100) : 'Recorded on animal master',
+                'location_id' => $a->location_id,
+                'notes' => 'Synchronized from animal status',
+            ]);
+            if ($a->current_status !== 'inactive') {
+                $a->forceFill(['current_status' => 'inactive'])->saveQuietly();
+            }
+        }
     }
 }

@@ -13,6 +13,7 @@ use App\Models\Company;
 use App\Models\Contact;
 use App\Models\ContentItem;
 use App\Models\Deal;
+use App\Models\Death;
 use App\Models\Decision;
 use App\Models\Employee;
 use App\Models\Expense;
@@ -92,6 +93,10 @@ class CrudController extends Controller
             $this->syncInvoicePaymentStatus((int) $record->invoice_id);
         }
 
+        if ($resource === 'livestock') {
+            $this->syncLivestockDeathState($record);
+        }
+
         if (! empty($config['with'])) {
             $record->load($config['with']);
         }
@@ -120,11 +125,45 @@ class CrudController extends Controller
             $this->syncInvoicePaymentStatus((int) $record->id);
         }
 
+        if ($resource === 'livestock') {
+            $this->syncLivestockDeathState($record);
+        }
+
         if (! empty($config['with'])) {
             $record->load($config['with']);
         }
 
         return response()->json($record->fresh($config['with'] ?? []));
+    }
+
+    private function syncLivestockDeathState(Model $record): void
+    {
+        $status = strtolower((string) ($record->status ?? ''));
+        $currentStatus = strtolower((string) ($record->current_status ?? ''));
+        $health = strtolower((string) ($record->health_status ?? ''));
+
+        $isDead = in_array($status, ['dead', 'deceased'], true)
+            || in_array($currentStatus, ['dead', 'deceased'], true)
+            || $health === 'dead';
+
+        if ($isDead) {
+            if ($record->current_status !== 'inactive') {
+                $record->forceFill(['current_status' => 'inactive'])->saveQuietly();
+            }
+            Death::firstOrCreate(
+                ['animal_id' => $record->id],
+                [
+                    'death_date' => now()->toDateString(),
+                    'cause' => !empty($record->notes) ? substr($record->notes, 0, 100) : 'Recorded on animal master',
+                    'location_id' => $record->location_id,
+                    'notes' => 'Status marked as dead in Livestock Master',
+                ]
+            );
+        } else {
+            if (in_array($status, ['alive', 'active'], true)) {
+                Death::where('animal_id', $record->id)->delete();
+            }
+        }
     }
 
     public function destroy(Request|string $request, string|int $resource, ?int $id = null): JsonResponse

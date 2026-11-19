@@ -918,6 +918,39 @@
   }
 }
 
+.btn-danger {
+  background: #dc2626 !important;
+  color: #fff !important;
+  border: 1px solid #dc2626 !important;
+
+  &:hover:not(:disabled) {
+    background: #b91c1c !important;
+    border-color: #b91c1c !important;
+  }
+}
+
+.btn-outline-danger {
+  background: transparent;
+  color: #dc2626;
+  border: 1px solid #f87171;
+
+  &:hover:not(:disabled) {
+    background: #fef2f2;
+    border-color: #dc2626;
+    color: #b91c1c;
+  }
+}
+
+.kpi-clickable {
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.12);
+  }
+}
+
 /* Birth lifecycle modal (§96) */
 .kid-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
 .kid-row select, .kid-row input { flex: 1; min-width: 130px; }
