@@ -82,6 +82,14 @@
                 class="form-control"
                 rows="3"></textarea>
 
+              <input *ngIf="resource === 'sales' && field.key === 'animal_id'"
+                type="search"
+                [(ngModel)]="animalSearchQuery"
+                [ngModelOptions]="{ standalone: true }"
+                [attr.aria-label]="'Search ' + field.label"
+                placeholder="Search animal ID, species, breed..."
+                class="form-control" />
+
               <select *ngIf="field.type === 'select'"
                 [id]="'field_' + field.key"
                 [(ngModel)]="form[field.key]"
@@ -89,8 +97,12 @@
                 [required]="!!field.required"
                 class="form-control form-select">
                 <option [ngValue]="''">Select {{ field.label }}</option>
-                <option *ngFor="let opt of optionsFor(field)" [ngValue]="opt.value">{{ opt.label }}</option>
+                <option *ngFor="let opt of filteredOptionsFor(field)" [ngValue]="opt.value">{{ opt.label }}</option>
               </select>
+
+              <p class="muted" *ngIf="resource === 'sales' && field.key === 'animal_id' && animalSearchQuery.trim() && !filteredOptionsFor(field).length">
+                No animals match your search.
+              </p>
 
               <p class="muted" *ngIf="field.key === 'media_asset_id' && !optionsFor(field).length">
                 No media assets are available yet. <a routerLink="/media-assets">Add one in the Media Library</a>.

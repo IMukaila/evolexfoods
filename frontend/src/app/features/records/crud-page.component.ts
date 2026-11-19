@@ -31,6 +31,7 @@ export class CrudPageComponent implements OnInit, AfterViewInit, OnDestroy {
   filteredRows: any[] = [];
   lookups: any = {};
   form: Record<string, any> = {};
+  animalSearchQuery = '';
   editingId: number | null = null;
   showForm = false;
   saving = false;
@@ -286,6 +287,25 @@ export class CrudPageComponent implements OnInit, AfterViewInit, OnDestroy {
     return [];
   }
 
+  filteredOptionsFor(field: FieldDef): { value: any; label: string }[] {
+    const options = this.optionsFor(field);
+    const query = this.animalSearchQuery.trim().toLowerCase();
+    if (this.resource !== 'sales' || field.key !== 'animal_id' || !query) {
+      return options;
+    }
+
+    return options.filter((option) => {
+      const animal = (this.lookups.animals || []).find((item: any) => String(item.id) === String(option.value));
+      return [
+        option.label,
+        animal?.species,
+        animal?.breed,
+        animal?.sex,
+        animal?.status
+      ].some((value) => String(value ?? '').toLowerCase().includes(query));
+    });
+  }
+
   optionsForFilter(filter: AdvancedFilterDef): { value: any; label: string }[] {
     if (filter.options) {
       return filter.options;
@@ -324,6 +344,7 @@ export class CrudPageComponent implements OnInit, AfterViewInit, OnDestroy {
 
   openCreate(): void {
     this.editingId = null;
+    this.animalSearchQuery = '';
     this.form = { ...(this.def.defaults || {}) };
     this.showForm = true;
     this.error = '';
@@ -331,6 +352,7 @@ export class CrudPageComponent implements OnInit, AfterViewInit, OnDestroy {
 
   openEdit(row: any): void {
     this.editingId = row.id;
+    this.animalSearchQuery = '';
     this.form = {};
     this.def.fields.forEach((field) => {
       const value = field.key === 'company_name' && this.resource === 'contacts'
@@ -345,6 +367,7 @@ export class CrudPageComponent implements OnInit, AfterViewInit, OnDestroy {
   cancel(): void {
     this.showForm = false;
     this.editingId = null;
+    this.animalSearchQuery = '';
   }
 
   save(): void {
