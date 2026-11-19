@@ -43,8 +43,23 @@ export class CrudPageComponent implements OnInit, AfterViewInit, OnDestroy {
   previewPayment: any | null = null;
   downloadingReceipt = false;
 
+  animalDropdownOpen: Record<string, boolean> = {};
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    const target = event.target as HTMLElement;
+    if (!target.closest('.searchable-select-wrap')) {
+      this.closeAllAnimalDropdowns();
+    }
+  }
+
   @HostListener('document:keydown.escape')
   onEscape(): void {
+    const hasOpenDropdown = Object.values(this.animalDropdownOpen).some(Boolean);
+    if (hasOpenDropdown) {
+      this.closeAllAnimalDropdowns();
+      return;
+    }
     if (this.showForm) {
       this.cancel();
     }
@@ -306,6 +321,91 @@ export class CrudPageComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
+  isAnimalLookup(field: FieldDef): boolean {
+    return field.type === 'select' && (field.lookup === 'animals' || field.key === 'animal_id');
+  }
+
+  isAnimalDropdownOpen(fieldKey: string): boolean {
+    return !!this.animalDropdownOpen[fieldKey];
+  }
+
+  toggleAnimalDropdown(fieldKey: string, event?: Event): void {
+    if (event) {
+      event.stopPropagation();
+    }
+    const wasOpen = !!this.animalDropdownOpen[fieldKey];
+    this.closeAllAnimalDropdowns();
+    this.animalDropdownOpen[fieldKey] = !wasOpen;
+  }
+
+  closeAllAnimalDropdowns(): void {
+    this.animalDropdownOpen = {};
+  }
+
+  selectAnimal(fieldKey: string, animal: any): void {
+    this.form[fieldKey] = animal.id;
+    this.closeAllAnimalDropdowns();
+    this.animalSearchQuery = '';
+  }
+
+  clearAnimalSelection(fieldKey: string, event: Event): void {
+    event.stopPropagation();
+    this.form[fieldKey] = '';
+    this.closeAllAnimalDropdowns();
+  }
+
+  isAnimalSelected(fieldKey: string, animalId: any): boolean {
+    const current = this.form[fieldKey];
+    if (current === null || current === undefined || current === '') {
+      return false;
+    }
+    return String(current) === String(animalId);
+  }
+
+  getSelectedAnimalDisplay(animalId: any): any | null {
+    if (animalId === null || animalId === undefined || animalId === '') {
+      return null;
+    }
+    const animals: any[] = this.lookups?.animals || [];
+    const found = animals.find((a: any) => String(a.id) === String(animalId) || String(a.animal_id) === String(animalId));
+    if (found) {
+      return found;
+    }
+
+    if (this.editingId && this.rows?.length) {
+      const editRow = this.rows.find((r: any) => r.id === this.editingId);
+      if (editRow?.animal && (String(editRow.animal.id) === String(animalId) || String(editRow.animal_id) === String(animalId))) {
+        return editRow.animal;
+      }
+    }
+    return { id: animalId, animal_id: `Animal #${animalId}` };
+  }
+
+  getFilteredAnimalOptions(): any[] {
+    const animals: any[] = this.lookups?.animals || [];
+    const query = (this.animalSearchQuery || '').trim().toLowerCase();
+    if (!query) {
+      return animals;
+    }
+    return animals.filter((animal: any) => {
+      return [
+        animal.animal_id,
+        animal.tag_id,
+        animal.species,
+        animal.breed,
+        animal.sex,
+        animal.status
+      ].some((val) => val && String(val).toLowerCase().includes(query));
+    });
+  }
+
+  titleCase(str: string | null | undefined): string {
+    if (!str) return '';
+    return str
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, (char) => char.toUpperCase());
+  }
+
   optionsForFilter(filter: AdvancedFilterDef): { value: any; label: string }[] {
     if (filter.options) {
       return filter.options;
@@ -345,6 +445,7 @@ export class CrudPageComponent implements OnInit, AfterViewInit, OnDestroy {
   openCreate(): void {
     this.editingId = null;
     this.animalSearchQuery = '';
+    this.closeAllAnimalDropdowns();
     this.form = { ...(this.def.defaults || {}) };
     this.showForm = true;
     this.error = '';
@@ -353,6 +454,7 @@ export class CrudPageComponent implements OnInit, AfterViewInit, OnDestroy {
   openEdit(row: any): void {
     this.editingId = row.id;
     this.animalSearchQuery = '';
+    this.closeAllAnimalDropdowns();
     this.form = {};
     this.def.fields.forEach((field) => {
       const value = field.key === 'company_name' && this.resource === 'contacts'
@@ -368,6 +470,7 @@ export class CrudPageComponent implements OnInit, AfterViewInit, OnDestroy {
     this.showForm = false;
     this.editingId = null;
     this.animalSearchQuery = '';
+    this.closeAllAnimalDropdowns();
   }
 
   save(): void {

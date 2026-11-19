@@ -265,7 +265,7 @@ class CrudController extends Controller
             'suppliers' => Supplier::orderBy('name')->get(['id', 'name', 'code']),
             'users' => User::orderBy('name')->get(['id', 'name', 'email', 'role']),
             'employees' => Employee::orderBy('name')->get(['id', 'name', 'employee_code']),
-            'animals' => Animal::orderBy('animal_id')->get(['id', 'animal_id', 'species', 'sex', 'status']),
+            'animals' => Animal::orderBy('animal_id')->get(['id', 'animal_id', 'tag_id', 'species', 'breed', 'sex', 'status']),
             'assets' => Asset::orderBy('asset_id')->get(['id', 'asset_id', 'name']),
             'companies' => Company::orderBy('name')->get(['id', 'name']),
             'contacts' => Contact::with('company:id,name')->orderBy('name')->get(['id', 'name', 'company_id']),
