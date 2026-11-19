@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\DashboardController;
 use App\Http\Controllers\Api\V1\EventController;
 use App\Http\Controllers\Api\V1\FeedInventoryController;
 use App\Http\Controllers\Api\V1\FinanceController;
+use App\Http\Controllers\Api\V1\InvoicePdfController;
 use App\Http\Controllers\Api\V1\GovernanceController;
 use App\Http\Controllers\Api\V1\HrTaskController;
 use App\Http\Controllers\Api\V1\LivestockController;
@@ -109,6 +110,10 @@ Route::prefix('v1')->group(function () {
 
         Route::get('/finance/overview', [FinanceController::class, 'overview']);
         Route::get('/finance/spending', [FinanceController::class, 'spending']);
+        Route::get('/invoices/{id}/pdf', [InvoicePdfController::class, 'downloadPdf'])->whereNumber('id');
+        Route::get('/invoices/{id}/html', [InvoicePdfController::class, 'viewHtml'])->whereNumber('id');
+        Route::get('/records/invoices/{id}/pdf', [InvoicePdfController::class, 'downloadPdf'])->whereNumber('id');
+        Route::get('/records/invoices/{id}/html', [InvoicePdfController::class, 'viewHtml'])->whereNumber('id');
 
         Route::get('/crm/prospects', [CrmController::class, 'prospects']);
         Route::get('/crm/opportunities', [CrmController::class, 'opportunities']);

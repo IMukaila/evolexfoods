@@ -61,7 +61,15 @@ export interface FinanceInvoice {
   id: number;
   invoice_number: string;
   supplier_id: number | null;
-  supplier?: { id: number; name: string; code?: string } | null;
+  supplier?: {
+    id: number;
+    name: string;
+    code?: string;
+    contact_name?: string | null;
+    phone?: string | null;
+    email?: string | null;
+    location?: string | null;
+  } | null;
   amount: number | string;
   invoice_date: string;
   due_date: string | null;

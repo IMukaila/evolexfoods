@@ -7,7 +7,7 @@ import { FinanceInvoice, FinanceOverview, SupplierLookup } from './finance.model
 import { FinanceNavComponent } from './finance-nav.component';
 
 type InvoiceFilter = 'all' | 'overdue' | 'unpaid' | 'partial' | 'paid';
-type InvoiceModal = 'invoice' | 'payment' | null;
+type InvoiceModal = 'invoice' | 'payment' | 'preview' | null;
 
 interface InvoiceForm {
   invoice_number: string;
@@ -61,6 +61,8 @@ export class InvoicesComponent implements OnInit {
   statusFilter: InvoiceFilter = 'all';
   modal: InvoiceModal = null;
   saving = false;
+  previewInvoice: FinanceInvoice | null = null;
+  downloadingId: number | null = null;
   editingId: number | null = null;
   invoiceForm: InvoiceForm = this.emptyInvoiceForm();
   paymentForm: PaymentForm = this.emptyPaymentForm();
@@ -175,6 +177,43 @@ export class InvoicesComponent implements OnInit {
     }
   }
 
+  openPreview(invoice: FinanceInvoice): void {
+    this.previewInvoice = invoice;
+    this.modal = 'preview';
+    this.error = '';
+  }
+
+  printInvoice(invoice?: FinanceInvoice): void {
+    const target = invoice || this.previewInvoice;
+    if (!target) return;
+    this.previewInvoice = target;
+    this.modal = 'preview';
+    setTimeout(() => {
+      window.print();
+    }, 150);
+  }
+
+  downloadPdf(invoice: FinanceInvoice): void {
+    this.downloadingId = invoice.id;
+    this.api.getBlob(`/invoices/${invoice.id}/pdf`).subscribe({
+      next: (blob) => {
+        this.downloadingId = null;
+        const blobUrl = window.URL.createObjectURL(blob as Blob);
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = `${invoice.invoice_number}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(blobUrl);
+      },
+      error: () => {
+        this.downloadingId = null;
+        window.open(`/api/v1/invoices/${invoice.id}/pdf`, '_blank');
+      }
+    });
+  }
+
   saveInvoice(): void {
     if (this.saving || !this.invoiceForm.invoice_number.trim() || !this.invoiceForm.amount || !this.invoiceForm.invoice_date) {
       return;
@@ -247,6 +286,13 @@ export class InvoicesComponent implements OnInit {
       },
       error: (error) => this.error = this.apiError(error, 'Could not delete this invoice.')
     });
+  }
+
+  totalPaid(invoice: FinanceInvoice): number {
+    if (invoice.status === 'paid' && !(invoice.payments?.length)) {
+      return Number(invoice.amount);
+    }
+    return (invoice.payments ?? []).reduce((sum, payment) => sum + Number(payment.amount), 0);
   }
 
   outstandingBalance(invoice: FinanceInvoice): number {

@@ -123,7 +123,9 @@
         </thead>
         <tbody>
           <tr *ngFor="let invoice of filteredInvoices; trackBy: trackInvoiceById">
-            <td><strong class="invoice-number">{{ invoice.invoice_number }}</strong></td>
+            <td>
+              <strong class="invoice-number invoice-link" (click)="openPreview(invoice)" title="View & print invoice">{{ invoice.invoice_number }}</strong>
+            </td>
             <td><span class="supplier-name">{{ supplierName(invoice) }}</span></td>
             <td>{{ formatDate(invoice.invoice_date) }}</td>
             <td [class.due-date-overdue]="displayStatus(invoice) === 'overdue'">{{ formatDate(invoice.due_date) }}</td>
@@ -132,6 +134,15 @@
             <td><span class="status-pill" [class]="'status-pill status-pill--' + displayStatus(invoice)">{{ statusLabel(invoice) }}</span></td>
             <td class="action-cell">
               <div class="row-actions">
+                <button type="button" class="row-icon" (click)="openPreview(invoice)" [attr.aria-label]="'View invoice ' + invoice.invoice_number" title="View & print invoice">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" /></svg>
+                </button>
+                <button type="button" class="row-icon" (click)="printInvoice(invoice)" [attr.aria-label]="'Print ' + invoice.invoice_number" title="Print invoice">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg>
+                </button>
+                <button type="button" class="row-icon row-icon--pdf" [disabled]="downloadingId === invoice.id" (click)="downloadPdf(invoice)" [attr.aria-label]="'Download PDF ' + invoice.invoice_number" title="Download PDF">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>
+                </button>
                 <button *ngIf="outstandingBalance(invoice) > 0" type="button" class="row-link row-link--pay" (click)="openPayment(invoice)" [attr.aria-label]="'Record payment for ' + invoice.invoice_number">Pay</button>
                 <button type="button" class="row-icon" (click)="openEdit(invoice)" [attr.aria-label]="'Edit ' + invoice.invoice_number" title="Edit invoice"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L20 8l-4-4L4 16v4Zm10-14 4 4" /></svg></button>
                 <button type="button" class="row-icon row-icon--danger" (click)="removeInvoice(invoice)" [attr.aria-label]="'Delete ' + invoice.invoice_number" title="Delete invoice"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M10 7V4h4v3m-7 0 1 13h8l1-13M10 11v6m4-6v6" /></svg></button>
@@ -196,5 +207,136 @@
       <p class="form-error" *ngIf="error" role="alert">{{ error }}</p>
       <div class="modal-actions"><button type="button" class="button button--quiet" (click)="closeModal()" [disabled]="saving">Cancel</button><button type="submit" class="button button--primary" [disabled]="saving || paymentFormRef.invalid">{{ saving ? 'Recording…' : 'Record payment' }}</button></div>
     </form>
+  </section>
+</div>
+
+<!-- Invoice Preview & Print Modal -->
+<div class="modal-backdrop modal-backdrop--preview" *ngIf="modal === 'preview' && previewInvoice" (click)="closeModal()">
+  <section class="modal-card modal-card--invoice" role="dialog" aria-modal="true" aria-labelledby="preview-modal-title" (click)="$event.stopPropagation()">
+    <!-- Modal Action Bar (Hidden on print) -->
+    <div class="invoice-toolbar no-print">
+      <div class="toolbar-left">
+        <h2 id="preview-modal-title">Invoice {{ previewInvoice.invoice_number }}</h2>
+        <span class="status-pill" [class]="'status-pill status-pill--' + displayStatus(previewInvoice)">{{ statusLabel(previewInvoice) }}</span>
+      </div>
+      <div class="toolbar-actions">
+        <button type="button" class="button button--quiet print-btn" (click)="printInvoice()" title="Print invoice">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg>
+          <span>Print</span>
+        </button>
+        <button type="button" class="button button--primary download-btn" [disabled]="downloadingId === previewInvoice.id" (click)="downloadPdf(previewInvoice)" title="Download PDF document">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>
+          <span>{{ downloadingId === previewInvoice.id ? 'Downloading…' : 'Download PDF' }}</span>
+        </button>
+        <button *ngIf="outstandingBalance(previewInvoice) > 0" type="button" class="button button--pay" (click)="openPayment(previewInvoice)">
+          <span>Record payment</span>
+        </button>
+        <button type="button" class="modal-close" (click)="closeModal()" aria-label="Close invoice preview">×</button>
+      </div>
+    </div>
+
+    <!-- Printable Invoice Sheet -->
+    <div class="invoice-sheet" id="printable-invoice">
+      <div class="invoice-header">
+        <div class="brand-block">
+          <div class="brand-logo"><span class="brand-mark">E</span></div>
+          <div>
+            <h1 class="brand-name">EVOLEX FOODS LTD</h1>
+            <p class="brand-sub">Agricultural Production &amp; Supply Chain Management</p>
+            <p class="brand-meta">Accra · Central Region, Ghana · finance&#64;evolexfoods.com · +233 24 000 0000</p>
+          </div>
+        </div>
+        <div class="invoice-tag-block">
+          <span class="sheet-status" [class]="'sheet-status--' + displayStatus(previewInvoice)">{{ statusLabel(previewInvoice) }}</span>
+          <p class="sheet-number">{{ previewInvoice.invoice_number }}</p>
+        </div>
+      </div>
+
+      <div class="invoice-parties">
+        <div class="party-card">
+          <p class="party-kicker">Supplier / Billed From</p>
+          <strong class="party-name">{{ supplierName(previewInvoice) }}</strong>
+          <p class="party-line" *ngIf="previewInvoice.supplier?.code">Vendor Code: {{ previewInvoice.supplier?.code }}</p>
+          <p class="party-line" *ngIf="previewInvoice.supplier?.contact_name">Contact: {{ previewInvoice.supplier?.contact_name }}</p>
+          <p class="party-line" *ngIf="previewInvoice.supplier?.phone">Phone: {{ previewInvoice.supplier?.phone }}</p>
+          <p class="party-line" *ngIf="previewInvoice.supplier?.email">Email: {{ previewInvoice.supplier?.email }}</p>
+          <p class="party-line" *ngIf="previewInvoice.supplier?.location">Location: {{ previewInvoice.supplier?.location }}</p>
+        </div>
+        <div class="party-card party-card--meta">
+          <p class="party-kicker">Invoice Details</p>
+          <div class="meta-row"><span>Invoice Date:</span><strong>{{ formatDate(previewInvoice.invoice_date) }}</strong></div>
+          <div class="meta-row"><span>Payment Due:</span><strong [class.text-alert]="displayStatus(previewInvoice) === 'overdue'">{{ formatDate(previewInvoice.due_date) }}</strong></div>
+          <div class="meta-row"><span>Currency:</span><strong>GHS (Ghana Cedi)</strong></div>
+        </div>
+      </div>
+
+      <table class="sheet-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Item / Description</th>
+            <th class="text-right">Qty</th>
+            <th class="text-right">Unit Price</th>
+            <th class="text-right">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td>
+              <strong>Commercial Agricultural Supplies &amp; Deliveries</strong>
+              <span class="sheet-item-sub">Invoice {{ previewInvoice.invoice_number }}</span>
+            </td>
+            <td class="text-right">1</td>
+            <td class="text-right">{{ formatCurrency(previewInvoice.amount) }}</td>
+            <td class="text-right"><strong>{{ formatCurrency(previewInvoice.amount) }}</strong></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="sheet-bottom">
+        <div class="payment-notes">
+          <p class="notes-heading">Payment terms &amp; instructions</p>
+          <p>Please quote <strong>{{ previewInvoice.invoice_number }}</strong> on all remittance advices and bank transfers.</p>
+          <p class="banking-info">
+            Bank: <strong>GCB Bank / Stanbic Bank Ghana</strong> · Name: <strong>Evolex Foods Ltd</strong><br />
+            Mobile Money: <strong>MTN MoMo Merchant</strong>
+          </p>
+        </div>
+
+        <div class="sheet-totals">
+          <div class="total-row"><span>Subtotal</span><strong>{{ formatCurrency(previewInvoice.amount) }}</strong></div>
+          <div class="total-row text-success"><span>Payments Cleared</span><strong>- {{ formatCurrency(totalPaid(previewInvoice)) }}</strong></div>
+          <div class="total-row total-row--grand">
+            <span>Balance Due</span>
+            <strong [class.text-alert]="outstandingBalance(previewInvoice) > 0" [class.text-success]="outstandingBalance(previewInvoice) === 0">
+              {{ formatCurrency(outstandingBalance(previewInvoice)) }}
+            </strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="sheet-payments" *ngIf="previewInvoice.payments?.length">
+        <p class="notes-heading">Payment History</p>
+        <table class="payments-subtable">
+          <thead>
+            <tr><th>Date</th><th>Method</th><th>Reference</th><th class="text-right">Amount</th></tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let p of previewInvoice.payments">
+              <td>{{ formatDate(p.paid_at) }}</td>
+              <td>{{ p.method ? p.method.replace('_', ' ') : 'Payment' }}</td>
+              <td>{{ p.reference || '—' }}</td>
+              <td class="text-right text-success"><strong>{{ formatCurrency(p.amount) }}</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <footer class="sheet-footer">
+        <span>Evolex Foods Ltd · Supply Chain, Farm Operations &amp; Accounts Payable</span>
+        <span>Official System Record · evolexfoods.com</span>
+      </footer>
+    </div>
   </section>
 </div>
