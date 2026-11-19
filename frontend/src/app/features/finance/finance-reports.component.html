@@ -77,27 +77,205 @@
 
     <section class="report-panel ledger-panel" aria-labelledby="activity-ledger-title">
       <div class="ledger-heading">
-        <div><p class="panel-kicker">Transaction detail</p><h2 id="activity-ledger-title">Cash activity register</h2><p>Expenses and paid invoices that fall inside the selected reporting period.</p></div>
-        <span class="entry-count">{{ entries.length }} {{ entries.length === 1 ? 'entry' : 'entries' }}</span>
+        <div>
+          <p class="panel-kicker">Transaction detail</p>
+          <h2 id="activity-ledger-title">Cash activity register</h2>
+          <p>Expenses and paid invoices that fall inside the selected reporting period.</p>
+        </div>
+        <div class="ledger-heading-actions">
+          <button type="button" class="ledger-btn ledger-btn--print" (click)="printLedger()" title="Print Cash Activity Register">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9V3h10v6M7 19H5v-8h14v8h-2M8 15h8v6H8z" /></svg>
+            <span>Print register</span>
+          </button>
+          <button type="button" class="ledger-btn ledger-btn--export" (click)="exportCsv()" [disabled]="loading" title="Export entries to CSV">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14" /></svg>
+            <span>Export CSV</span>
+          </button>
+          <span class="entry-count">{{ filteredEntries.length }} of {{ entries.length }} {{ entries.length === 1 ? 'entry' : 'entries' }}</span>
+        </div>
       </div>
+
+      <!-- Cash Activity Filters Bar -->
+      <div class="ledger-filters-bar">
+        <!-- Quick Activity Selector Pills -->
+        <div class="ledger-type-pills" role="radiogroup" aria-label="Filter by activity">
+          <button
+            type="button"
+            class="pill-btn"
+            [class.is-active]="activityFilter === 'all'"
+            (click)="setActivityFilter('all')">
+            All ({{ entries.length }})
+          </button>
+          <button
+            type="button"
+            class="pill-btn pill-btn--expense"
+            [class.is-active]="activityFilter === 'Expense'"
+            (click)="setActivityFilter('Expense')">
+            Expenses ({{ expenseCount }})
+          </button>
+          <button
+            type="button"
+            class="pill-btn pill-btn--payment"
+            [class.is-active]="activityFilter === 'Supplier payment'"
+            (click)="setActivityFilter('Supplier payment')">
+            Supplier Payments ({{ paymentCount }})
+          </button>
+        </div>
+
+        <div class="ledger-controls-row">
+          <!-- Live Search Input -->
+          <div class="ledger-search-box">
+            <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input
+              type="text"
+              [(ngModel)]="searchQuery"
+              (ngModelChange)="applyLedgerFilters()"
+              placeholder="Search reference, vendor, description, method..."
+              aria-label="Search cash activity register"
+            />
+            <button
+              *ngIf="searchQuery"
+              type="button"
+              class="clear-search-btn"
+              (click)="searchQuery = ''; applyLedgerFilters()"
+              title="Clear search">
+              &times;
+            </button>
+          </div>
+
+          <!-- Method / Source Filter -->
+          <div class="ledger-filter-select">
+            <label for="ledger-method-select">Method:</label>
+            <select
+              id="ledger-method-select"
+              [(ngModel)]="methodFilter"
+              (ngModelChange)="applyLedgerFilters()">
+              <option value="all">All Methods</option>
+              <option *ngFor="let m of availableMethods" [value]="m">
+                {{ formatMethodLabel(m) }}
+              </option>
+            </select>
+          </div>
+
+          <!-- Sort Order -->
+          <div class="ledger-filter-select">
+            <label for="ledger-sort-select">Sort:</label>
+            <select
+              id="ledger-sort-select"
+              [(ngModel)]="sortFilter"
+              (ngModelChange)="applyLedgerFilters()">
+              <option value="date-desc">Date (Newest first)</option>
+              <option value="date-asc">Date (Oldest first)</option>
+              <option value="amount-desc">Amount (Highest first)</option>
+              <option value="amount-asc">Amount (Lowest first)</option>
+            </select>
+          </div>
+
+          <!-- Min/Max Amount Range -->
+          <div class="ledger-amount-range">
+            <input
+              type="number"
+              [(ngModel)]="minAmountFilter"
+              (ngModelChange)="applyLedgerFilters()"
+              placeholder="Min GHS"
+              aria-label="Minimum amount in GHS"
+            />
+            <span class="range-dash">&ndash;</span>
+            <input
+              type="number"
+              [(ngModel)]="maxAmountFilter"
+              (ngModelChange)="applyLedgerFilters()"
+              placeholder="Max GHS"
+              aria-label="Maximum amount in GHS"
+            />
+          </div>
+
+          <!-- Reset Filters Button -->
+          <button
+            *ngIf="hasActiveFilters"
+            type="button"
+            class="reset-filters-btn"
+            (click)="resetLedgerFilters()"
+            title="Reset all filters">
+            Clear filters
+          </button>
+        </div>
+
+        <!-- Filter Subtotal & Results Summary Strip -->
+        <div class="ledger-summary-strip">
+          <div class="summary-meta">
+            <span class="showing-count">Showing <strong>{{ filteredEntries.length }}</strong> of {{ entries.length }} entries</span>
+            <span class="dot-separator" aria-hidden="true">&bull;</span>
+            <span class="period-text">Reporting period: <strong>{{ overview ? formatDate(overview.from) : '—' }} &ndash; {{ overview ? formatDate(overview.to) : '—' }}</strong></span>
+          </div>
+          <div class="summary-totals">
+            <span class="total-badge total-badge--expenses" *ngIf="activityFilter === 'all' || activityFilter === 'Expense'">
+              Expenses: <strong>{{ formatCurrency(filteredExpenseTotal) }}</strong>
+            </span>
+            <span class="total-badge total-badge--payments" *ngIf="activityFilter === 'all' || activityFilter === 'Supplier payment'">
+              Payments: <strong>{{ formatCurrency(filteredPaymentTotal) }}</strong>
+            </span>
+            <span class="total-badge total-badge--grand">
+              Filtered Total: <strong>{{ formatCurrency(filteredTotalAmount) }}</strong>
+            </span>
+          </div>
+        </div>
+      </div>
+
       <div class="ledger-scroll">
         <table>
-          <thead><tr><th scope="col">Date</th><th scope="col">Activity</th><th scope="col">Reference</th><th scope="col">Description / vendor</th><th scope="col">Method / source</th><th scope="col" class="amount-column">Amount (GHS)</th></tr></thead>
+          <thead>
+            <tr>
+              <th scope="col">Date</th>
+              <th scope="col">Activity</th>
+              <th scope="col">Reference</th>
+              <th scope="col">Description / vendor</th>
+              <th scope="col">Method / source</th>
+              <th scope="col" class="amount-column">Amount (GHS)</th>
+            </tr>
+          </thead>
           <tbody>
-            <tr *ngFor="let entry of entries">
+            <tr *ngFor="let entry of filteredEntries">
               <td>{{ formatDate(entry.date) }}</td>
-              <td><span class="type-chip" [class.type-chip--payment]="entry.type === 'Supplier payment'">{{ entry.type }}</span></td>
+              <td>
+                <span class="type-chip" [class.type-chip--payment]="entry.type === 'Supplier payment'">
+                  {{ entry.type }}
+                </span>
+              </td>
               <td class="reference-cell">{{ entry.reference }}</td>
               <td>{{ entry.description }}</td>
-              <td>{{ entry.method }}</td>
+              <td>{{ formatMethodLabel(entry.method) }}</td>
               <td class="amount-column">{{ formatCurrency(entry.amount) }}</td>
             </tr>
-            <tr *ngIf="!loading && entries.length === 0"><td colspan="6"><div class="ledger-empty"><strong>No cash activity in this period</strong><span>Once expenses or supplier payments are recorded, the detail will appear here.</span></div></td></tr>
-            <tr *ngIf="loading && entries.length === 0"><td colspan="6" class="ledger-loading">Loading finance records…</td></tr>
+            <tr *ngIf="!loading && filteredEntries.length === 0">
+              <td colspan="6">
+                <div class="ledger-empty">
+                  <strong>No cash activity entries found</strong>
+                  <span *ngIf="hasActiveFilters">Try adjusting your search terms or filters above.</span>
+                  <span *ngIf="!hasActiveFilters">Once expenses or supplier payments are recorded, the detail will appear here.</span>
+                  <button *ngIf="hasActiveFilters" type="button" class="apply-button" (click)="resetLedgerFilters()" style="margin-top: 8px;">Reset filters</button>
+                </div>
+              </td>
+            </tr>
+            <tr *ngIf="loading && entries.length === 0">
+              <td colspan="6" class="ledger-loading">Loading finance records…</td>
+            </tr>
           </tbody>
+          <tfoot *ngIf="filteredEntries.length > 0">
+            <tr class="ledger-tfoot-row">
+              <td colspan="5" class="tfoot-label">Total for filtered selection ({{ filteredEntries.length }} {{ filteredEntries.length === 1 ? 'entry' : 'entries' }}):</td>
+              <td class="amount-column tfoot-total">{{ formatCurrency(filteredTotalAmount) }}</td>
+            </tr>
+          </tfoot>
         </table>
       </div>
-      <div class="ledger-footer"><span>Source: expense register + payment register</span><a routerLink="/invoices">Review outstanding supplier bills <span aria-hidden="true">→</span></a></div>
+      <div class="ledger-footer">
+        <span>Source: expense register + payment register</span>
+        <a routerLink="/invoices">Review outstanding supplier bills <span aria-hidden="true">&rarr;</span></a>
+      </div>
     </section>
 
     <footer class="report-footnote"><span class="footnote-icon" aria-hidden="true">i</span><p><strong>Reporting note.</strong> Recorded outflow includes expense entries and payments applied to invoices. Outstanding payables are not cash outflow until paid; purchase-order commitments are not included in this cash activity report.</p></footer>
