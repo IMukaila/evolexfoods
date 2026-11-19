@@ -529,6 +529,250 @@
     </div>
   </div>
 
+  <!-- Receipt Preview Modal (Livestock Sales - A4 Dual Copy: Original & Duplicate) -->
+  <div class="modal-backdrop modal-backdrop--receipt-preview" *ngIf="resource === 'sales' && previewSale" (click)="closeSaleReceiptPreview()">
+    <div class="modal-card modal-card--receipt" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <div class="modal-header modal-header--receipt">
+        <div class="modal-title-group">
+          <div class="modal-icon-badge badge-receipt">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+          </div>
+          <div>
+            <div class="modal-eyebrow">A4 Dual Voucher &bull; Top: Original &bull; Bottom: Duplicate</div>
+            <h2>Sales Receipt #SLS-{{ padReceiptId(previewSale.id) }}</h2>
+          </div>
+        </div>
+        <div class="modal-header-actions">
+          <button type="button" class="btn btn-secondary" (click)="downloadSaleReceipt(previewSale)" [disabled]="downloadingSaleReceipt">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5 5 5 5-5m-5 5V3"></path>
+            </svg>
+            <span>{{ downloadingSaleReceipt ? 'Downloading...' : 'Download PDF' }}</span>
+          </button>
+          <button type="button" class="btn btn-primary" (click)="printSaleReceipt(previewSale)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 6 2 18 2 18 9"></polyline>
+              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+              <rect x="6" y="14" width="12" height="8"></rect>
+            </svg>
+            <span>Print Receipt (A4 Dual Copy)</span>
+          </button>
+          <button type="button" class="btn-modal-close" (click)="closeSaleReceiptPreview()" aria-label="Close dialog">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="modal-body-scroll receipt-preview-body">
+        <div class="receipt-dual-container">
+          <!-- TOP HALF: ORIGINAL (BUYER COPY) -->
+          <div class="receipt-half-card">
+            <div class="rh-banner">
+              <div>
+                <h3 class="rh-brand-name">EVOLEX FOODS LTD</h3>
+                <p class="rh-brand-sub">Agricultural Production &amp; Supply Chain Management &bull; Livestock Division</p>
+                <p class="rh-brand-meta">Accra - Central Region, Ghana &bull; finance&#64;evolexfoods.com &bull; +233 24 000 0000</p>
+              </div>
+              <div class="rh-badge rh-badge--original">
+                <div class="rh-badge-title">SALES RECEIPT: ORIGINAL</div>
+                <div class="rh-badge-sub">BUYER / CUSTOMER COPY</div>
+              </div>
+            </div>
+
+            <div class="rh-meta-strip">
+              <div><strong>Receipt No:</strong> <span class="rh-code">SLS-{{ padReceiptId(previewSale.id) }}</span></div>
+              <div><strong>Date:</strong> {{ formatSaleDate(previewSale.event_date) }}</div>
+              <div><strong>Event Type:</strong> {{ previewSale.type === 'cull' ? 'Livestock Cull / Disposal' : 'Commercial Livestock Sale' }}</div>
+              <div><strong>Animal:</strong> <span class="rh-ref">{{ getSaleAnimalDisplay(previewSale).id }}</span></div>
+            </div>
+
+            <div class="rh-details-grid">
+              <div class="rh-detail-box">
+                <span class="rh-detail-kicker">SOLD TO / BUYER DETAILS</span>
+                <strong class="rh-detail-title">{{ previewSale.buyer || 'General Buyer / Walk-in Customer' }}</strong>
+                <p class="rh-detail-line">Commercial Livestock Off-take</p>
+                <p class="rh-detail-line">Location: Accra / Central Region, Ghana</p>
+              </div>
+
+              <div class="rh-detail-box">
+                <span class="rh-detail-kicker">LIVESTOCK SPECIFICATIONS</span>
+                <strong class="rh-detail-title">ID: {{ getSaleAnimalDisplay(previewSale).id }} &bull; Tag: {{ getSaleAnimalDisplay(previewSale).tag }}</strong>
+                <p class="rh-detail-line">Species: {{ getSaleAnimalDisplay(previewSale).species }} &bull; Breed: {{ getSaleAnimalDisplay(previewSale).breed }}</p>
+                <p class="rh-detail-line text-success">
+                  <strong>Sex: {{ getSaleAnimalDisplay(previewSale).sex }} &bull; Status: Transferred to Buyer</strong>
+                </p>
+              </div>
+            </div>
+
+            <div class="rh-amount-card">
+              <div>
+                <span class="rh-amt-kicker">AMOUNT RECEIVED / REALIZED VALUE</span>
+                <div class="rh-amt-val">GH₵ {{ formatSaleCurrency(previewSale.amount) }}</div>
+              </div>
+              <div class="rh-amt-words-box">
+                <span class="rh-amt-words-kicker">Amount in words:</span>
+                <div class="rh-amt-words-val">{{ amountToWords(+previewSale.amount) }}</div>
+              </div>
+            </div>
+
+            <table class="rh-table">
+              <thead>
+                <tr>
+                  <th style="width: 30px;">#</th>
+                  <th>Livestock Description &amp; Handover Notes</th>
+                  <th style="width: 170px;">Event Category</th>
+                  <th style="width: 120px;" class="text-right">Amount (GHS)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>1</td>
+                  <td>
+                    <strong>1x Livestock Off-take: {{ getSaleAnimalDisplay(previewSale).species }} ({{ getSaleAnimalDisplay(previewSale).breed }}, {{ getSaleAnimalDisplay(previewSale).sex }}) &mdash; Animal ID: {{ getSaleAnimalDisplay(previewSale).id }}</strong>
+                    <div style="font-size: 11px; color: #555; margin-top: 2px;">Notes: {{ previewSale.notes || 'Livestock verified and handed over.' }}</div>
+                  </td>
+                  <td>{{ previewSale.type === 'cull' ? 'Livestock Cull' : 'Commercial Sale' }}</td>
+                  <td class="text-right"><strong>GH₵ {{ formatSaleCurrency(previewSale.amount) }}</strong></td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div class="rh-sig-grid">
+              <div class="rh-sig-box">
+                <span class="rh-sig-kicker">ISSUED BY (SALES &amp; FARM OFFICER)</span>
+                <div class="rh-sig-line"></div>
+                <div class="rh-sig-label">Authorized Signature &amp; Date Stamp</div>
+                <div class="rh-sig-sub">Evolex Foods Ltd &bull; Commercial Livestock Division</div>
+              </div>
+              <div class="rh-sig-box">
+                <span class="rh-sig-kicker">RECEIVED &amp; ACKNOWLEDGED BY (BUYER)</span>
+                <div class="rh-sig-line"></div>
+                <div class="rh-sig-label">Buyer Signature &amp; Full Name</div>
+                <div class="rh-sig-sub">Date: ________________________</div>
+              </div>
+            </div>
+
+            <div class="rh-footer-note">
+              <span>Official computer-generated sales voucher &bull; Ownership transfers upon full settlement and animal handover.</span>
+              <span>Official Record &bull; Evolex Foods Livestock Sales</span>
+            </div>
+          </div>
+
+          <!-- PERFORATION / CUT DIVIDER -->
+          <div class="receipt-cut-line">
+            <span class="cut-scissors">&#9986;</span>
+            <span class="cut-dash"></span>
+            <span class="cut-text">CUT ALONG DOTTED LINE &bull; Top: Original Buyer Copy &bull; Bottom: Duplicate Accounts Office Copy</span>
+            <span class="cut-dash"></span>
+            <span class="cut-scissors">&#9986;</span>
+          </div>
+
+          <!-- BOTTOM HALF: DUPLICATE (ACCOUNTS OFFICE COPY) -->
+          <div class="receipt-half-card">
+            <div class="rh-banner">
+              <div>
+                <h3 class="rh-brand-name">EVOLEX FOODS LTD</h3>
+                <p class="rh-brand-sub">Agricultural Production &amp; Supply Chain Management &bull; Livestock Division</p>
+                <p class="rh-brand-meta">Accra - Central Region, Ghana &bull; finance&#64;evolexfoods.com &bull; +233 24 000 0000</p>
+              </div>
+              <div class="rh-badge rh-badge--duplicate">
+                <div class="rh-badge-title">SALES RECEIPT: DUPLICATE</div>
+                <div class="rh-badge-sub">ACCOUNTS &amp; FARM OFFICE COPY</div>
+              </div>
+            </div>
+
+            <div class="rh-meta-strip">
+              <div><strong>Receipt No:</strong> <span class="rh-code">SLS-{{ padReceiptId(previewSale.id) }}</span></div>
+              <div><strong>Date:</strong> {{ formatSaleDate(previewSale.event_date) }}</div>
+              <div><strong>Event Type:</strong> {{ previewSale.type === 'cull' ? 'Livestock Cull / Disposal' : 'Commercial Livestock Sale' }}</div>
+              <div><strong>Animal:</strong> <span class="rh-ref">{{ getSaleAnimalDisplay(previewSale).id }}</span></div>
+            </div>
+
+            <div class="rh-details-grid">
+              <div class="rh-detail-box">
+                <span class="rh-detail-kicker">SOLD TO / BUYER DETAILS</span>
+                <strong class="rh-detail-title">{{ previewSale.buyer || 'General Buyer / Walk-in Customer' }}</strong>
+                <p class="rh-detail-line">Commercial Livestock Off-take</p>
+                <p class="rh-detail-line">Location: Accra / Central Region, Ghana</p>
+              </div>
+
+              <div class="rh-detail-box">
+                <span class="rh-detail-kicker">LIVESTOCK SPECIFICATIONS</span>
+                <strong class="rh-detail-title">ID: {{ getSaleAnimalDisplay(previewSale).id }} &bull; Tag: {{ getSaleAnimalDisplay(previewSale).tag }}</strong>
+                <p class="rh-detail-line">Species: {{ getSaleAnimalDisplay(previewSale).species }} &bull; Breed: {{ getSaleAnimalDisplay(previewSale).breed }}</p>
+                <p class="rh-detail-line text-success">
+                  <strong>Sex: {{ getSaleAnimalDisplay(previewSale).sex }} &bull; Status: Transferred to Buyer</strong>
+                </p>
+              </div>
+            </div>
+
+            <div class="rh-amount-card">
+              <div>
+                <span class="rh-amt-kicker">AMOUNT RECEIVED / REALIZED VALUE</span>
+                <div class="rh-amt-val">GH₵ {{ formatSaleCurrency(previewSale.amount) }}</div>
+              </div>
+              <div class="rh-amt-words-box">
+                <span class="rh-amt-words-kicker">Amount in words:</span>
+                <div class="rh-amt-words-val">{{ amountToWords(+previewSale.amount) }}</div>
+              </div>
+            </div>
+
+            <table class="rh-table">
+              <thead>
+                <tr>
+                  <th style="width: 30px;">#</th>
+                  <th>Livestock Description &amp; Handover Notes</th>
+                  <th style="width: 170px;">Event Category</th>
+                  <th style="width: 120px;" class="text-right">Amount (GHS)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>1</td>
+                  <td>
+                    <strong>1x Livestock Off-take: {{ getSaleAnimalDisplay(previewSale).species }} ({{ getSaleAnimalDisplay(previewSale).breed }}, {{ getSaleAnimalDisplay(previewSale).sex }}) &mdash; Animal ID: {{ getSaleAnimalDisplay(previewSale).id }}</strong>
+                    <div style="font-size: 11px; color: #555; margin-top: 2px;">Notes: {{ previewSale.notes || 'Livestock verified and handed over.' }}</div>
+                  </td>
+                  <td>{{ previewSale.type === 'cull' ? 'Livestock Cull' : 'Commercial Sale' }}</td>
+                  <td class="text-right"><strong>GH₵ {{ formatSaleCurrency(previewSale.amount) }}</strong></td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div class="rh-sig-grid">
+              <div class="rh-sig-box">
+                <span class="rh-sig-kicker">ISSUED BY (SALES &amp; FARM OFFICER)</span>
+                <div class="rh-sig-line"></div>
+                <div class="rh-sig-label">Authorized Signature &amp; Date Stamp</div>
+                <div class="rh-sig-sub">Evolex Foods Ltd &bull; Commercial Livestock Division</div>
+              </div>
+              <div class="rh-sig-box">
+                <span class="rh-sig-kicker">RECEIVED &amp; ACKNOWLEDGED BY (BUYER)</span>
+                <div class="rh-sig-line"></div>
+                <div class="rh-sig-label">Buyer Signature &amp; Full Name</div>
+                <div class="rh-sig-sub">Date: ________________________</div>
+              </div>
+            </div>
+
+            <div class="rh-footer-note">
+              <span>Official computer-generated sales voucher &bull; Ownership transfers upon full settlement and animal handover.</span>
+              <span>Official Record &bull; Evolex Foods Livestock Sales</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- KPI Cards -->
   <div class="kpis" *ngIf="computedKpis.length">
     <div class="kpi" *ngFor="let kpi of computedKpis" [class.alert]="kpi.alert" [class.ok]="kpi.ok" [class.info]="kpi.info">

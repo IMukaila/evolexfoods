@@ -2425,7 +2425,7 @@ export const CRUD_RESOURCES: Record<string, ResourceDef> = {
       { key: 'company', label: 'Company', render: (row) => row.company_name || row.company?.name || '-' },
       { key: 'contact', label: 'Contact', render: (row) => row.contact_name || row.contact?.name || '-' },
       { key: 'stage', label: 'Pipeline stage', render: (row) => row.stage?.name || '-' },
-      { key: 'amount', label: 'Amount', render: (row) => row.amount === null || row.amount === undefined ? '-' : Number(row.amount).toLocaleString() },
+      { key: 'amount', label: 'Amount (GHS)', render: (row) => row.amount === null || row.amount === undefined ? '-' : 'GH₵ ' + Number(row.amount).toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
       { key: 'close_date', label: 'Expected close' },
       { key: 'next_action', label: 'Next action' },
       { key: 'status', label: 'Status' }
@@ -2503,7 +2503,7 @@ export const CRUD_RESOURCES: Record<string, ResourceDef> = {
       { key: 'type', label: 'Event type' },
       { key: 'event_date', label: 'Date' },
       { key: 'buyer', label: 'Buyer' },
-      { key: 'amount', label: 'Amount', render: (row) => row.amount === null || row.amount === undefined ? '-' : Number(row.amount).toLocaleString() },
+      { key: 'amount', label: 'Amount (GHS)', render: (row) => row.amount === null || row.amount === undefined ? '-' : 'GH₵ ' + Number(row.amount).toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
       { key: 'notes', label: 'Notes' }
     ],
     fields: [
@@ -2513,7 +2513,7 @@ export const CRUD_RESOURCES: Record<string, ResourceDef> = {
       ]},
       { key: 'event_date', label: 'Date', type: 'date', required: true },
       { key: 'buyer', label: 'Buyer', type: 'text' },
-      { key: 'amount', label: 'Amount', type: 'number' },
+      { key: 'amount', label: 'Amount (GHS)', type: 'number', placeholder: 'e.g. 1500.00' },
       { key: 'notes', label: 'Notes', type: 'textarea' }
     ],
     defaults: { type: 'sale' },
@@ -2537,7 +2537,7 @@ export const CRUD_RESOURCES: Record<string, ResourceDef> = {
         compute: (rows) => {
           const sales = rows.filter((row) => row.type === 'sale');
           const value = sales.reduce((sum, row) => sum + Number(row.amount || 0), 0);
-          return { label: 'Sales value', value: value.toLocaleString(), meta: `${sales.length} sale${sales.length === 1 ? '' : 's'} in view`, ok: true };
+          return { label: 'Sales value', value: 'GH₵ ' + value.toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), meta: `${sales.length} sale${sales.length === 1 ? '' : 's'} in view`, ok: true };
         }
       },
       {

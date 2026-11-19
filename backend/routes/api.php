@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\V1\FeedInventoryController;
 use App\Http\Controllers\Api\V1\FinanceController;
 use App\Http\Controllers\Api\V1\InvoicePdfController;
 use App\Http\Controllers\Api\V1\PaymentReceiptController;
+use App\Http\Controllers\Api\V1\SaleReceiptController;
 use App\Http\Controllers\Api\V1\GovernanceController;
 use App\Http\Controllers\Api\V1\HrTaskController;
 use App\Http\Controllers\Api\V1\LivestockController;
@@ -122,6 +123,10 @@ Route::prefix('v1')->group(function () {
         Route::get('/records/payments/{id}/receipt', [PaymentReceiptController::class, 'downloadPdf'])->whereNumber('id');
         Route::get('/records/payments/{id}/pdf', [PaymentReceiptController::class, 'downloadPdf'])->whereNumber('id');
         Route::get('/records/payments/{id}/html', [PaymentReceiptController::class, 'viewHtml'])->whereNumber('id');
+        Route::get('/sales/{id}/receipt', [SaleReceiptController::class, 'downloadPdf'])->whereNumber('id');
+        Route::get('/sales/{id}/pdf', [SaleReceiptController::class, 'downloadPdf'])->whereNumber('id');
+        Route::get('/records/sales/{id}/receipt', [SaleReceiptController::class, 'downloadPdf'])->whereNumber('id');
+        Route::get('/records/sales/{id}/pdf', [SaleReceiptController::class, 'downloadPdf'])->whereNumber('id');
 
         Route::get('/crm/prospects', [CrmController::class, 'prospects']);
         Route::get('/crm/opportunities', [CrmController::class, 'opportunities']);

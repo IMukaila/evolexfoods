@@ -42,6 +42,8 @@ export class CrudPageComponent implements OnInit, AfterViewInit, OnDestroy {
   private clickBound = false;
   previewPayment: any | null = null;
   downloadingReceipt = false;
+  previewSale: any | null = null;
+  downloadingSaleReceipt = false;
 
   animalDropdownOpen: Record<string, boolean> = {};
 
@@ -65,6 +67,9 @@ export class CrudPageComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     if (this.previewPayment) {
       this.closeReceiptPreview();
+    }
+    if (this.previewSale) {
+      this.closeSaleReceiptPreview();
     }
   }
 
@@ -487,12 +492,17 @@ export class CrudPageComponent implements OnInit, AfterViewInit, OnDestroy {
       : this.api.post(`/records/${this.resource}`, payload);
 
     req.subscribe({
-      next: () => {
+      next: (res: any) => {
+        const wasCreating = !this.editingId;
+        const createdRow = res?.data;
         this.saving = false;
         this.message = this.editingId ? 'Record updated.' : 'Record created.';
         this.showForm = false;
         this.load();
         this.loadLookups();
+        if (this.resource === 'sales' && wasCreating && createdRow) {
+          this.openSaleReceiptPreview(createdRow);
+        }
       },
       error: (err) => {
         this.saving = false;
@@ -568,6 +578,15 @@ export class CrudPageComponent implements OnInit, AfterViewInit, OnDestroy {
       if (target.classList.contains('js-download-receipt')) {
         this.zone.run(() => this.downloadReceipt(row));
       }
+      if (target.classList.contains('js-preview-sale-receipt')) {
+        this.zone.run(() => this.openSaleReceiptPreview(row));
+      }
+      if (target.classList.contains('js-print-sale-receipt')) {
+        this.zone.run(() => this.printSaleReceipt(row));
+      }
+      if (target.classList.contains('js-download-sale-receipt')) {
+        this.zone.run(() => this.downloadSaleReceipt(row));
+      }
       if (target.classList.contains('js-edit')) {
         this.zone.run(() => this.openEdit(row));
       }
@@ -620,6 +639,30 @@ export class CrudPageComponent implements OnInit, AfterViewInit, OnDestroy {
               </button>
               <button class="icon-btn icon-btn--receipt js-preview-receipt" data-id="${row.id}" type="button"
                 title="Preview Receipt Voucher" aria-label="Preview Receipt">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+              <button class="icon-btn js-edit" data-id="${row.id}" type="button"
+                title="Edit record" aria-label="Edit record">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L20 8l-4-4L4 16v4Zm10-14 4 4"/></svg>
+              </button>
+              <button class="icon-btn icon-btn--danger js-delete" data-id="${row.id}" type="button"
+                title="Delete record" aria-label="Delete record">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M10 7V4h4v3m-7 0 1 13h8l1-13M10 11v6m4-6v6"/></svg>
+              </button>
+            </div>`;
+          }
+          if (this.resource === 'sales') {
+            return `<div class="row-actions">
+              <button class="icon-btn icon-btn--print js-print-sale-receipt" data-id="${row.id}" type="button"
+                title="Print Sales Receipt (A4 Dual Copy: Original & Duplicate)" aria-label="Print Sales Receipt">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+              </button>
+              <button class="icon-btn icon-btn--pdf js-download-sale-receipt" data-id="${row.id}" type="button"
+                title="Download PDF Sales Receipt" aria-label="Download Sales Receipt">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4m4-5 5 5 5-5m-5 5V3"/></svg>
+              </button>
+              <button class="icon-btn icon-btn--receipt js-preview-sale-receipt" data-id="${row.id}" type="button"
+                title="Preview Sales Receipt Voucher" aria-label="Preview Sales Receipt">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
               </button>
               <button class="icon-btn js-edit" data-id="${row.id}" type="button"
@@ -1021,6 +1064,302 @@ export class CrudPageComponent implements OnInit, AfterViewInit, OnDestroy {
     </div>
 
     ${renderCard('DUPLICATE', 'ACCOUNTS OFFICE COPY', 'badge-duplicate')}
+  </div>
+</body>
+</html>`;
+  }
+
+  // --- Sales Receipt Voucher Methods ---
+
+  openSaleReceiptPreview(sale: any): void {
+    if (!sale) return;
+    const saleCopy = { ...sale };
+    if (!saleCopy.animal && saleCopy.animal_id && this.lookups?.animals) {
+      saleCopy.animal = this.lookups.animals.find((a: any) => String(a.id) === String(saleCopy.animal_id)) || null;
+    }
+    this.previewSale = saleCopy;
+  }
+
+  closeSaleReceiptPreview(): void {
+    this.previewSale = null;
+  }
+
+  formatSaleDate(val: any): string {
+    if (!val) return '—';
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return String(val).slice(0, 10);
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+
+  formatSaleCurrency(amount: any): string {
+    if (amount == null || amount === '') return '0.00';
+    return Number(amount).toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  getSaleAnimalDisplay(sale: any): { id: string; tag: string; species: string; breed: string; sex: string } {
+    let animal = sale?.animal;
+    if (!animal && sale?.animal_id && this.lookups?.animals) {
+      animal = this.lookups.animals.find((a: any) => String(a.id) === String(sale.animal_id));
+    }
+    return {
+      id: animal?.animal_id || (sale?.animal_id ? `Animal #${sale.animal_id}` : '—'),
+      tag: animal?.tag_id ? `#${animal.tag_id}` : 'N/A',
+      species: animal?.species ? (animal.species.charAt(0).toUpperCase() + animal.species.slice(1)) : 'Livestock',
+      breed: animal?.breed || 'Standard',
+      sex: animal?.sex ? (animal.sex.charAt(0).toUpperCase() + animal.sex.slice(1)) : 'N/A'
+    };
+  }
+
+  downloadSaleReceipt(sale: any): void {
+    if (!sale?.id) return;
+    this.downloadingSaleReceipt = true;
+    this.api.getBlob(`/sales/${sale.id}/receipt`).subscribe({
+      next: (blob) => {
+        this.downloadingSaleReceipt = false;
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `receipt-sale-${this.padReceiptId(sale.id)}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      },
+      error: (err) => {
+        this.downloadingSaleReceipt = false;
+        console.error('Failed to download sales receipt PDF', err);
+        alert('Could not download sales receipt PDF. Please try again.');
+      }
+    });
+  }
+
+  printSaleReceipt(sale: any): void {
+    const printableHtml = this.buildSaleReceiptPrintHtml(sale);
+    let printFrame = document.getElementById('sale-receipt-print-frame') as HTMLIFrameElement;
+    if (!printFrame) {
+      printFrame = document.createElement('iframe');
+      printFrame.id = 'sale-receipt-print-frame';
+      printFrame.style.position = 'fixed';
+      printFrame.style.right = '0';
+      printFrame.style.bottom = '0';
+      printFrame.style.width = '0';
+      printFrame.style.height = '0';
+      printFrame.style.border = '0';
+      printFrame.style.visibility = 'hidden';
+      document.body.appendChild(printFrame);
+    }
+    const frameDoc = printFrame.contentDocument || printFrame.contentWindow?.document;
+    if (frameDoc) {
+      frameDoc.open();
+      frameDoc.write(printableHtml);
+      frameDoc.close();
+      setTimeout(() => {
+        printFrame.contentWindow?.focus();
+        printFrame.contentWindow?.print();
+      }, 250);
+    }
+  }
+
+  buildSaleReceiptPrintHtml(sale: any): string {
+    const receiptNo = 'SLS-' + this.padReceiptId(sale.id);
+    const dateStr = this.formatSaleDate(sale.event_date);
+    const typeLabel = sale.type === 'cull' ? 'Livestock Cull / Disposal' : 'Commercial Livestock Sale';
+    const buyerName = sale.buyer || 'General Buyer / Walk-in Customer';
+    const animalInfo = this.getSaleAnimalDisplay(sale);
+    const amountVal = Number(sale.amount || 0);
+    const amountFormatted = 'GH₵ ' + this.formatSaleCurrency(amountVal);
+    const amountWords = this.amountToWords(amountVal);
+    const notesStr = sale.notes || 'Livestock verified and handed over.';
+
+    const renderCard = (copyType: string, copySub: string, badgeClass: string) => `
+      <div class="receipt-card">
+        <div class="banner">
+          <div class="brand">
+            <h1>EVOLEX FOODS LTD</h1>
+            <p class="tagline">Agricultural Production &amp; Supply Chain Management &bull; Livestock Division</p>
+            <p class="contacts">Accra - Central Region, Ghana &bull; finance@evolexfoods.com &bull; +233 24 000 0000</p>
+          </div>
+          <div class="copy-badge ${badgeClass}">
+            <div class="badge-title">SALES RECEIPT: ${copyType}</div>
+            <div class="badge-sub">${copySub}</div>
+          </div>
+        </div>
+
+        <div class="meta-strip">
+          <div><strong>Receipt No:</strong> <span class="highlight">${receiptNo}</span></div>
+          <div><strong>Date:</strong> ${dateStr}</div>
+          <div><strong>Event Type:</strong> ${typeLabel}</div>
+          <div><strong>Animal:</strong> <span class="ref-code">${animalInfo.id}</span></div>
+        </div>
+
+        <div class="details-grid">
+          <div class="detail-box">
+            <div class="box-title">SOLD TO / BUYER DETAILS</div>
+            <div class="vendor-name">${buyerName}</div>
+            <div class="vendor-contact">Commercial Livestock Off-take</div>
+            <div class="vendor-loc">Location: Accra / Central Region, Ghana</div>
+          </div>
+          <div class="detail-box">
+            <div class="box-title">LIVESTOCK SPECIFICATIONS</div>
+            <div class="vendor-name">ID: ${animalInfo.id} &bull; Tag: ${animalInfo.tag}</div>
+            <div class="vendor-contact">Species: ${animalInfo.species} &bull; Breed: ${animalInfo.breed}</div>
+            <div class="vendor-loc text-success"><strong>Sex: ${animalInfo.sex} &bull; Status: Transferred to Buyer</strong></div>
+          </div>
+        </div>
+
+        <div class="amount-card">
+          <div class="amount-number">
+            <div class="amount-label">AMOUNT RECEIVED / REALIZED VALUE</div>
+            <div class="amount-val">${amountFormatted}</div>
+          </div>
+          <div class="amount-words-box">
+            <div class="amount-words-label">Amount in words:</div>
+            <div class="amount-words-val">${amountWords}</div>
+          </div>
+        </div>
+
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th style="width: 30px;">#</th>
+              <th>Livestock Description &amp; Handover Notes</th>
+              <th style="width: 170px;">Event Category</th>
+              <th style="width: 120px;" class="text-right">Amount (GHS)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td>
+                <strong>1x Livestock Off-take: ${animalInfo.species} (${animalInfo.breed}, ${animalInfo.sex}) &mdash; Animal ID: ${animalInfo.id}</strong>
+                <div style="font-size: 8px; color: #555; margin-top: 2px;">Notes: ${notesStr}</div>
+              </td>
+              <td>${typeLabel}</td>
+              <td class="text-right"><strong>${amountFormatted}</strong></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="sig-grid">
+          <div class="sig-box">
+            <div class="sig-title">ISSUED BY (SALES &amp; FARM OFFICER)</div>
+            <div class="sig-line"></div>
+            <div class="sig-caption">Authorized Signature &amp; Date Stamp</div>
+            <div class="sig-sub">Evolex Foods Ltd &bull; Commercial Livestock Division</div>
+          </div>
+          <div class="sig-box">
+            <div class="sig-title">RECEIVED &amp; ACKNOWLEDGED BY (BUYER)</div>
+            <div class="sig-line"></div>
+            <div class="sig-caption">Buyer Signature &amp; Full Name</div>
+            <div class="sig-sub">Date: ________________________</div>
+          </div>
+        </div>
+
+        <div class="card-footer">
+          <span>Official computer-generated sales voucher &bull; Ownership transfers upon full settlement and animal handover.</span>
+          <span>Official Record &bull; Evolex Foods Livestock Sales</span>
+        </div>
+      </div>
+    `;
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sales Receipt ${receiptNo} &bull; Evolex Foods</title>
+  <style>
+    @page { size: A4 portrait; margin: 0; }
+    * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 0; padding: 0; background: #ffffff; color: #1c2e1f;
+    }
+    .a4-page {
+      width: 210mm; height: 297mm; max-height: 297mm;
+      padding: 6mm 8mm; display: flex; flex-direction: column;
+      justify-content: space-between; overflow: hidden;
+      page-break-inside: avoid; page-break-after: avoid;
+    }
+    .receipt-card {
+      border: 1.5px solid #2f4a32; border-radius: 6px;
+      padding: 0 0 4px 0; background: #ffffff;
+      display: flex; flex-direction: column; height: 138mm; overflow: hidden;
+    }
+    .banner {
+      background: #2f4a32; color: #ffffff; padding: 8px 14px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .brand h1 { margin: 0; font-size: 16px; letter-spacing: -0.01em; color: #ffffff; font-weight: 800; }
+    .brand .tagline { margin: 1px 0 0 0; font-size: 8.5px; color: #c9d8c2; }
+    .brand .contacts { margin: 1px 0 0 0; font-size: 7.5px; color: #a5bda0; }
+    .copy-badge { border-radius: 5px; padding: 5px 12px; text-align: right; border: 1px solid rgba(255,255,255,0.4); }
+    .badge-original { background: #e8f5e9; color: #1b5e20; }
+    .badge-duplicate { background: #e3f2fd; color: #0d47a1; }
+    .badge-title { font-size: 11px; font-weight: 800; letter-spacing: 0.03em; }
+    .badge-sub { font-size: 8.5px; font-style: italic; margin-top: 1px; }
+    .meta-strip {
+      background: #fbfaf7; border-bottom: 1px solid #e3ddcd;
+      padding: 5px 14px; display: flex; justify-content: space-between;
+      font-size: 10.5px; color: #444444;
+    }
+    .meta-strip .highlight { color: #1c2e1f; font-weight: 700; }
+    .meta-strip .ref-code { color: #2f4a32; font-weight: 700; }
+    .details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 6px 14px; }
+    .detail-box { background: #fcfbf8; border: 1px solid #e3ddcd; border-radius: 5px; padding: 6px 10px; }
+    .box-title { font-size: 8px; text-transform: uppercase; letter-spacing: 0.05em; color: #8a8578; font-weight: 700; margin-bottom: 2px; }
+    .vendor-name { font-size: 11px; font-weight: 700; color: #1c2e1f; }
+    .vendor-contact, .vendor-loc { font-size: 9px; color: #555555; margin-top: 1px; }
+    .text-success { color: #1b5e20 !important; }
+    .text-danger { color: #b71c1c !important; }
+    .amount-card {
+      margin: 0 14px 6px 14px; background: #f0f7f1; border: 1.2px solid #2f4a32;
+      border-radius: 6px; padding: 6px 12px; display: flex; justify-content: space-between; align-items: center;
+    }
+    .amount-label { font-size: 8.5px; font-weight: 700; color: #2f4a32; letter-spacing: 0.03em; }
+    .amount-val { font-size: 17px; font-weight: 800; color: #1b5e20; margin-top: 1px; }
+    .amount-words-box { max-width: 60%; text-align: right; }
+    .amount-words-label { font-size: 8px; color: #6b7a63; text-transform: uppercase; }
+    .amount-words-val { font-size: 9.5px; font-weight: 600; font-style: italic; color: #1c2e1f; line-height: 1.25; }
+    .items-table { width: calc(100% - 28px); margin: 0 14px 6px 14px; border-collapse: collapse; font-size: 9.5px; }
+    .items-table th { background: #2f4a32; color: #ffffff; padding: 4px 8px; text-align: left; font-size: 8.5px; text-transform: uppercase; font-weight: 700; }
+    .items-table td { padding: 5px 8px; border: 1px solid #e3ddcd; background: #ffffff; }
+    .text-right { text-align: right; }
+    .sig-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 14px; margin-top: auto; }
+    .sig-box { background: #faf9f5; border: 1px solid #e3ddcd; border-radius: 5px; padding: 6px 10px; }
+    .sig-title { font-size: 8px; text-transform: uppercase; font-weight: 700; color: #8a8578; }
+    .sig-line { border-bottom: 1px solid #777777; margin: 18px 0 3px 0; }
+    .sig-caption { font-size: 8.5px; color: #555555; }
+    .sig-sub { font-size: 7.5px; font-style: italic; color: #888888; }
+    .card-footer {
+      border-top: 1px solid #e3ddcd; margin-top: 4px; padding: 3px 14px 0 14px;
+      font-size: 7px; color: #8a8578; display: flex; justify-content: space-between;
+    }
+    .cut-divider {
+      display: flex; align-items: center; justify-content: center;
+      gap: 8px; padding: 4px 0; color: #666666;
+    }
+    .cut-line { flex: 1; border-bottom: 1.5px dashed #888888; }
+    .cut-text {
+      font-size: 8.5px; font-weight: 700; letter-spacing: 0.05em;
+      text-transform: uppercase; display: flex; align-items: center; gap: 6px; color: #444444;
+    }
+    .cut-sub { font-size: 7.5px; color: #777777; font-weight: normal; margin-left: 6px; }
+  </style>
+</head>
+<body>
+  <div class="a4-page">
+    ${renderCard('ORIGINAL', 'BUYER / CUSTOMER COPY', 'badge-original')}
+
+    <div class="cut-divider">
+      <div class="cut-line"></div>
+      <div class="cut-text">
+        <span>&#9986; CUT ALONG DOTTED LINE</span>
+        <span class="cut-sub">(Top: Original Buyer Copy &bull; Bottom: Duplicate Accounts Copy)</span>
+      </div>
+      <div class="cut-line"></div>
+    </div>
+
+    ${renderCard('DUPLICATE', 'ACCOUNTS & FARM OFFICE COPY', 'badge-duplicate')}
   </div>
 </body>
 </html>`;
