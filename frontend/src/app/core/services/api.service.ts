@@ -36,4 +36,8 @@ export class ApiService {
   getBlob(path: string) {
     return this.http.get(`/api/v1${path}`, { responseType: 'blob' });
   }
+
+  postBlob(path: string, body: any) {
+    return this.http.post(`/api/v1${path}`, body, { responseType: 'blob' });
+  }
 }

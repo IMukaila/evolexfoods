@@ -8,8 +8,12 @@
       <p>Review cash activity, operating spend and supplier payments in one clear period view.</p>
     </div>
     <div class="report-actions">
-      <button type="button" class="report-button report-button--quiet" (click)="print()">
+      <button type="button" class="report-button report-button--quiet" (click)="print()" title="Print financial report">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9V3h10v6M7 19H5v-8h14v8h-2M8 15h8v6H8z" /></svg> Print
+      </button>
+      <button type="button" class="report-button report-button--quiet" (click)="downloadLedgerPdf()" [disabled]="downloadingPdf" title="Download Cash Activity Register as PDF">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+        <span>{{ downloadingPdf ? 'Downloading...' : 'Download PDF' }}</span>
       </button>
       <button type="button" class="report-button report-button--primary" (click)="exportCsv()" [disabled]="loading">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14" /></svg> Export CSV
@@ -87,6 +91,10 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9V3h10v6M7 19H5v-8h14v8h-2M8 15h8v6H8z" /></svg>
             <span>Print register</span>
           </button>
+          <button type="button" class="ledger-btn ledger-btn--download" (click)="downloadLedgerPdf()" [disabled]="downloadingPdf" title="Download Cash Activity Register as PDF">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" stroke="currentColor" stroke-width="2" fill="none"/></svg>
+            <span>{{ downloadingPdf ? 'Downloading...' : 'Download PDF' }}</span>
+          </button>
           <button type="button" class="ledger-btn ledger-btn--export" (click)="exportCsv()" [disabled]="loading" title="Export entries to CSV">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14" /></svg>
             <span>Export CSV</span>
@@ -144,6 +152,28 @@
               title="Clear search">
               &times;
             </button>
+          </div>
+
+          <!-- Date Range Filter -->
+          <div class="ledger-date-range">
+            <label for="ledger-date-from">Dates:</label>
+            <input
+              id="ledger-date-from"
+              type="date"
+              [(ngModel)]="ledgerDateFrom"
+              (ngModelChange)="applyLedgerFilters()"
+              title="From date"
+              aria-label="Filter from date"
+            />
+            <span class="range-dash">&ndash;</span>
+            <input
+              id="ledger-date-to"
+              type="date"
+              [(ngModel)]="ledgerDateTo"
+              (ngModelChange)="applyLedgerFilters()"
+              title="To date"
+              aria-label="Filter to date"
+            />
           </div>
 
           <!-- Method / Source Filter -->
@@ -209,7 +239,12 @@
           <div class="summary-meta">
             <span class="showing-count">Showing <strong>{{ filteredEntries.length }}</strong> of {{ entries.length }} entries</span>
             <span class="dot-separator" aria-hidden="true">&bull;</span>
-            <span class="period-text">Reporting period: <strong>{{ overview ? formatDate(overview.from) : '—' }} &ndash; {{ overview ? formatDate(overview.to) : '—' }}</strong></span>
+            <span class="period-text" *ngIf="ledgerDateFrom || ledgerDateTo">
+              Active dates: <strong>{{ ledgerDateFrom ? formatDate(ledgerDateFrom) : 'Start' }} &ndash; {{ ledgerDateTo ? formatDate(ledgerDateTo) : 'End' }}</strong>
+            </span>
+            <span class="period-text" *ngIf="!ledgerDateFrom && !ledgerDateTo">
+              Reporting period: <strong>{{ overview ? formatDate(overview.from) : '—' }} &ndash; {{ overview ? formatDate(overview.to) : '—' }}</strong>
+            </span>
           </div>
           <div class="summary-totals">
             <span class="total-badge total-badge--expenses" *ngIf="activityFilter === 'all' || activityFilter === 'Expense'">

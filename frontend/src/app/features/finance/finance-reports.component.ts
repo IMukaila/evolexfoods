@@ -39,6 +39,7 @@ export class FinanceReportsComponent implements OnInit {
   overview: FinanceOverview | null = null;
   expenses: FinanceExpense[] = [];
   payments: FinancePayment[] = [];
+  allEntries: LedgerEntry[] = [];
   entries: LedgerEntry[] = [];
   filteredEntries: LedgerEntry[] = [];
   searchQuery = '';
@@ -47,6 +48,9 @@ export class FinanceReportsComponent implements OnInit {
   sortFilter: 'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc' = 'date-desc';
   minAmountFilter: number | null = null;
   maxAmountFilter: number | null = null;
+  ledgerDateFrom = '';
+  ledgerDateTo = '';
+  downloadingPdf = false;
   loading = true;
   error = '';
   range: ReportRange = '30d';
@@ -92,6 +96,7 @@ export class FinanceReportsComponent implements OnInit {
         this.overview = response.overview;
         this.expenses = response.expenses.data ?? [];
         this.payments = response.payments.data ?? [];
+        this.allEntries = this.buildEntries('1900-01-01', '2099-12-31');
         this.entries = this.buildEntries(bounds.from, bounds.to);
         this.applyLedgerFilters();
         this.loadedAt = new Date();
@@ -144,6 +149,8 @@ export class FinanceReportsComponent implements OnInit {
       this.methodFilter !== 'all' ||
       this.sortFilter !== 'date-desc' ||
       Boolean(this.searchQuery.trim()) ||
+      Boolean(this.ledgerDateFrom) ||
+      Boolean(this.ledgerDateTo) ||
       this.minAmountFilter !== null ||
       this.maxAmountFilter !== null
     );
@@ -151,7 +158,8 @@ export class FinanceReportsComponent implements OnInit {
 
   get availableMethods(): string[] {
     const set = new Set<string>();
-    for (const e of this.entries) {
+    const source = (this.ledgerDateFrom || this.ledgerDateTo) ? this.allEntries : this.entries;
+    for (const e of source) {
       if (e.method && e.method.trim()) {
         set.add(e.method.trim());
       }
@@ -160,11 +168,13 @@ export class FinanceReportsComponent implements OnInit {
   }
 
   get expenseCount(): number {
-    return this.entries.filter((e) => e.type === 'Expense').length;
+    const source = (this.ledgerDateFrom || this.ledgerDateTo) ? this.allEntries : this.entries;
+    return source.filter((e) => e.type === 'Expense').length;
   }
 
   get paymentCount(): number {
-    return this.entries.filter((e) => e.type === 'Supplier payment').length;
+    const source = (this.ledgerDateFrom || this.ledgerDateTo) ? this.allEntries : this.entries;
+    return source.filter((e) => e.type === 'Supplier payment').length;
   }
 
   get filteredTotalAmount(): number {
@@ -193,8 +203,19 @@ export class FinanceReportsComponent implements OnInit {
     const max = this.maxAmountFilter !== null && this.maxAmountFilter !== undefined && (this.maxAmountFilter as any) !== ''
       ? Number(this.maxAmountFilter)
       : null;
+    const fromDate = this.ledgerDateFrom ? this.ledgerDateFrom : null;
+    const toDate = this.ledgerDateTo ? this.ledgerDateTo : null;
 
-    let list = this.entries.filter((entry) => {
+    const source = (fromDate || toDate) ? this.allEntries : this.entries;
+
+    let list = source.filter((entry) => {
+      const entryDate = (entry.date || '').slice(0, 10);
+      if (fromDate && entryDate && entryDate < fromDate) {
+        return false;
+      }
+      if (toDate && entryDate && entryDate > toDate) {
+        return false;
+      }
       if (type !== 'all' && entry.type !== type) {
         return false;
       }
@@ -249,6 +270,8 @@ export class FinanceReportsComponent implements OnInit {
     this.sortFilter = 'date-desc';
     this.minAmountFilter = null;
     this.maxAmountFilter = null;
+    this.ledgerDateFrom = '';
+    this.ledgerDateTo = '';
     this.applyLedgerFilters();
   }
 
@@ -285,14 +308,21 @@ export class FinanceReportsComponent implements OnInit {
   }
 
   buildLedgerPrintHtml(): string {
-    const periodFrom = this.overview?.from ? this.formatDate(this.overview.from) : 'Start';
-    const periodTo = this.overview?.to ? this.formatDate(this.overview.to) : 'End';
+    const periodFrom = this.ledgerDateFrom
+      ? this.formatDate(this.ledgerDateFrom)
+      : (this.overview?.from ? this.formatDate(this.overview.from) : 'Start');
+    const periodTo = this.ledgerDateTo
+      ? this.formatDate(this.ledgerDateTo)
+      : (this.overview?.to ? this.formatDate(this.overview.to) : 'End');
     const generatedAt = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) +
       ' at ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 
     let filterSummary = 'All Transactions (' + this.entries.length + ' entries in period)';
     if (this.hasActiveFilters) {
       const parts: string[] = [];
+      if (this.ledgerDateFrom || this.ledgerDateTo) {
+        parts.push('Dates: ' + (this.ledgerDateFrom || 'Start') + ' to ' + (this.ledgerDateTo || 'End'));
+      }
       if (this.activityFilter !== 'all') parts.push('Activity: ' + this.activityFilter);
       if (this.methodFilter !== 'all') parts.push('Method: ' + this.formatMethodLabel(this.methodFilter));
       if (this.searchQuery.trim()) parts.push('Search: "' + this.searchQuery.trim() + '"');
@@ -392,8 +422,8 @@ export class FinanceReportsComponent implements OnInit {
     </div>
     <div class="header-meta">
       <strong>OFFICIAL FINANCIAL STATEMENT</strong>
-      <div>Period: \${periodFrom} &ndash; \${periodTo}</div>
-      <div>Generated: \${generatedAt}</div>
+      <div>Period: ${periodFrom} &ndash; ${periodTo}</div>
+      <div>Generated: ${generatedAt}</div>
     </div>
   </div>
 
@@ -402,25 +432,25 @@ export class FinanceReportsComponent implements OnInit {
       <h2>Cash Activity Register</h2>
       <p>Detailed transaction register of operating expenses and invoice payments.</p>
     </div>
-    <div class="filter-tag">\${filterSummary}</div>
+    <div class="filter-tag">${filterSummary}</div>
   </div>
 
   <div class="kpi-strip">
     <div class="kpi-card kpi-card--primary">
       <div class="kpi-label">Total Outflow / Disbursed</div>
-      <div class="kpi-val">\${this.formatCurrency(this.filteredTotalAmount)}</div>
+      <div class="kpi-val">${this.formatCurrency(this.filteredTotalAmount)}</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-label">Direct Operating Expenses</div>
-      <div class="kpi-val">\${this.formatCurrency(this.filteredExpenseTotal)}</div>
+      <div class="kpi-val">${this.formatCurrency(this.filteredExpenseTotal)}</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-label">Supplier Invoice Payments</div>
-      <div class="kpi-val">\${this.formatCurrency(this.filteredPaymentTotal)}</div>
+      <div class="kpi-val">${this.formatCurrency(this.filteredPaymentTotal)}</div>
     </div>
     <div class="kpi-card">
       <div class="kpi-label">Transactions Count</div>
-      <div class="kpi-val">\${this.filteredEntries.length} entries</div>
+      <div class="kpi-val">${this.filteredEntries.length} entries</div>
     </div>
   </div>
 
@@ -437,12 +467,12 @@ export class FinanceReportsComponent implements OnInit {
       </tr>
     </thead>
     <tbody>
-      \${rowsHtml || '<tr><td colspan="7" style="text-align: center; padding: 20px;">No cash activity entries found matching the filter criteria.</td></tr>'}
+      ${rowsHtml || '<tr><td colspan="7" style="text-align: center; padding: 20px;">No cash activity entries found matching the filter criteria.</td></tr>'}
     </tbody>
     <tfoot>
       <tr>
         <td colspan="6" style="text-align: right; text-transform: uppercase;">Total Disbursed:</td>
-        <td style="text-align: right; color: #1c2e1f;">\${this.formatCurrency(this.filteredTotalAmount)}</td>
+        <td style="text-align: right; color: #1c2e1f;">${this.formatCurrency(this.filteredTotalAmount)}</td>
       </tr>
     </tfoot>
   </table>
@@ -466,6 +496,66 @@ export class FinanceReportsComponent implements OnInit {
 </html>`;
   }
 
+  downloadLedgerPdf(): void {
+    this.downloadingPdf = true;
+    const list = this.filteredEntries;
+    const from = this.ledgerDateFrom || this.overview?.from || 'period';
+    const to = this.ledgerDateTo || this.overview?.to || 'period';
+
+    let filterSummary = 'All Transactions (' + this.entries.length + ' entries in period)';
+    if (this.hasActiveFilters) {
+      const parts: string[] = [];
+      if (this.ledgerDateFrom || this.ledgerDateTo) {
+        parts.push('Dates: ' + (this.ledgerDateFrom || 'Start') + ' to ' + (this.ledgerDateTo || 'End'));
+      }
+      if (this.activityFilter !== 'all') parts.push('Activity: ' + this.activityFilter);
+      if (this.methodFilter !== 'all') parts.push('Method: ' + this.formatMethodLabel(this.methodFilter));
+      if (this.searchQuery.trim()) parts.push('Search: "' + this.searchQuery.trim() + '"');
+      if (this.minAmountFilter !== null) parts.push('Min: GHS ' + this.minAmountFilter);
+      if (this.maxAmountFilter !== null) parts.push('Max: GHS ' + this.maxAmountFilter);
+      filterSummary = 'Filtered: ' + parts.join(' | ') + ' (' + list.length + ' entries)';
+    }
+
+    const payload = {
+      entries: list.map((e) => ({
+        date: e.date,
+        type: e.type,
+        reference: e.reference,
+        description: e.description,
+        method: e.method,
+        amount: e.amount
+      })),
+      meta: {
+        from,
+        to,
+        filterSummary
+      }
+    };
+
+    this.api.postBlob('/finance/reports/cash-activity/pdf', payload).subscribe({
+      next: (blob: any) => {
+        this.downloadingPdf = false;
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `cash-activity-register-${from}-to-${to}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      },
+      error: (err: any) => {
+        this.downloadingPdf = false;
+        console.error('Failed to download PDF report', err);
+        this.printLedger();
+      }
+    });
+  }
+
+  print(): void {
+    this.printLedger();
+  }
+
   exportCsv(): void {
     const list = this.hasActiveFilters ? this.filteredEntries : this.entries;
     const rows = [
@@ -480,10 +570,6 @@ export class FinanceReportsComponent implements OnInit {
     link.download = `evolex-finance-activity-${this.overview?.from ?? 'period'}-to-${this.overview?.to ?? 'period'}.csv`;
     link.click();
     URL.revokeObjectURL(url);
-  }
-
-  print(): void {
-    window.print();
   }
 
   private buildEntries(from: string, to: string): LedgerEntry[] {

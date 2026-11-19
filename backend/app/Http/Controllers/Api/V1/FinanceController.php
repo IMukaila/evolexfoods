@@ -7,9 +7,11 @@ use App\Models\Expense;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\PurchaseOrder;
+use App\Services\CashActivityReportPdfService;
 use App\Support\DateRange;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 
 class FinanceController extends Controller
 {
@@ -180,6 +182,77 @@ class FinanceController extends Controller
             'by_category' => $byCategory,
             'upcoming_invoices' => Invoice::where('status', 'unpaid')->whereDate('due_date', '>=', now())->orderBy('due_date')->get(),
             'source' => 'expenses, purchase_orders, invoices',
+        ]);
+    }
+
+    /**
+     * Download or view the Cash Activity Register PDF statement.
+     */
+    public function cashActivityPdf(Request $request, CashActivityReportPdfService $pdfService): Response
+    {
+        if ($request->isMethod('post') && $request->has('entries')) {
+            $entries = $request->input('entries', []);
+            $meta = $request->input('meta', []);
+            $binaryPdf = $pdfService->generatePdf($entries, $meta);
+        } else {
+            [$from, $to] = DateRange::fromRequest($request, 30);
+            $expensesQuery = Expense::whereBetween('expense_date', [$from, $to]);
+            $paymentsQuery = Payment::with(['invoice.supplier'])->whereBetween('paid_at', [$from, $to]);
+
+            if ($request->filled('method') && $request->query('method') !== 'all') {
+                $method = strtolower($request->query('method'));
+                $expensesQuery->whereRaw('LOWER(source) = ?', [$method]);
+                $paymentsQuery->whereRaw('LOWER(method) = ?', [$method]);
+            }
+
+            $type = $request->query('type', 'all');
+            $entries = [];
+
+            if ($type === 'all' || $type === 'Expense') {
+                foreach ($expensesQuery->orderByDesc('expense_date')->get() as $exp) {
+                    $entries[] = [
+                        'date' => $exp->expense_date?->toDateString() ?? '',
+                        'type' => 'Expense',
+                        'reference' => $exp->category ?: 'Expense',
+                        'description' => $exp->description ?: 'Operating expense',
+                        'method' => $exp->source ?: 'Manual entry',
+                        'amount' => (float) $exp->amount,
+                    ];
+                }
+            }
+
+            if ($type === 'all' || $type === 'Supplier payment') {
+                foreach ($paymentsQuery->orderByDesc('paid_at')->get() as $pmt) {
+                    $entries[] = [
+                        'date' => $pmt->paid_at?->toDateString() ?? '',
+                        'type' => 'Supplier payment',
+                        'reference' => $pmt->invoice?->invoice_number ?? ('Invoice #' . $pmt->invoice_id),
+                        'description' => $pmt->invoice?->supplier?->name ?? 'Supplier payment',
+                        'method' => $pmt->method ?: 'Not specified',
+                        'amount' => (float) $pmt->amount,
+                    ];
+                }
+            }
+
+            usort($entries, fn ($a, $b) => strcmp($b['date'], $a['date']));
+
+            $meta = [
+                'from' => $from->toDateString(),
+                'to' => $to->toDateString(),
+                'filterSummary' => $type === 'all' ? 'All Transactions' : ($type . 's only'),
+            ];
+
+            $binaryPdf = $pdfService->generatePdf($entries, $meta);
+        }
+
+        $filename = 'cash-activity-register-' . ($meta['from'] ?? 'period') . '-to-' . ($meta['to'] ?? 'period') . '.pdf';
+        $disposition = $request->boolean('inline') ? 'inline' : 'attachment';
+
+        return response($binaryPdf, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => sprintf('%s; filename="%s"', $disposition, $filename),
+            'Content-Length' => strlen($binaryPdf),
+            'Cache-Control' => 'private, no-cache, no-store, must-revalidate',
         ]);
     }
 }

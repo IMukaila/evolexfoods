@@ -80,6 +80,8 @@
 .ledger-btn:hover:not(:disabled) { border-color: #31543a; background: #f0f7f1; color: #1b5e20; transform: translateY(-1px); }
 .ledger-btn--print { border-color: #31543a; background: #31543a; color: #fffdf5; }
 .ledger-btn--print:hover:not(:disabled) { background: #1c2e1f; border-color: #1c2e1f; color: #ffffff; }
+.ledger-btn--download { border-color: #2e6930; background: #edf5ee; color: #1b5e20; }
+.ledger-btn--download:hover:not(:disabled) { background: #dff0e2; border-color: #1b5e20; color: #0f3d15; }
 .entry-count { flex: 0 0 auto; border: 1px solid var(--hairline); border-radius: 999px; padding: 6px 9px; color: var(--text-muted); font-size: 9px; font-weight: 750; }
 
 .ledger-filters-bar { margin: 12px 0 16px; display: flex; flex-direction: column; gap: 11px; padding: 12px 14px; border: 1px solid #e7dfd0; border-radius: 12px; background: rgba(251,247,238,.65); }
@@ -96,6 +98,11 @@
 .ledger-search-box input:focus { outline: none; border-color: #31543a; box-shadow: 0 0 0 2px rgba(49,84,58,.15); }
 .search-icon { position: absolute; left: 8px; width: 13px; height: 13px; fill: none; stroke: var(--text-muted); stroke-width: 2; pointer-events: none; }
 .clear-search-btn { position: absolute; right: 6px; background: transparent; border: none; color: var(--text-muted); font-size: 14px; cursor: pointer; padding: 0 4px; line-height: 1; }
+
+.ledger-date-range { display: inline-flex; align-items: center; gap: 4px; }
+.ledger-date-range label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); }
+.ledger-date-range input { width: 104px; border: 1px solid #d9d0bf; border-radius: 8px; padding: 4px 6px; background: var(--surface); color: var(--tint-ok-fg); font: 500 9.5px 'Manrope',sans-serif; }
+.ledger-date-range input:focus { outline: none; border-color: #31543a; box-shadow: 0 0 0 2px rgba(49,84,58,.15); }
 
 .ledger-filter-select { display: inline-flex; align-items: center; gap: 6px; }
 .ledger-filter-select label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); }

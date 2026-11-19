@@ -111,6 +111,7 @@ Route::prefix('v1')->group(function () {
 
         Route::get('/finance/overview', [FinanceController::class, 'overview']);
         Route::get('/finance/spending', [FinanceController::class, 'spending']);
+        Route::match(['get', 'post'], '/finance/reports/cash-activity/pdf', [FinanceController::class, 'cashActivityPdf']);
         Route::get('/invoices/{id}/pdf', [InvoicePdfController::class, 'downloadPdf'])->whereNumber('id');
         Route::get('/invoices/{id}/html', [InvoicePdfController::class, 'viewHtml'])->whereNumber('id');
         Route::get('/records/invoices/{id}/pdf', [InvoicePdfController::class, 'downloadPdf'])->whereNumber('id');
