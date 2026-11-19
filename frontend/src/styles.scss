@@ -350,6 +350,19 @@ td {
   outline-offset: 2px;
 }
 
+.icon-btn--print:hover,
+.icon-btn--receipt:hover {
+  border-color: #2f4a32;
+  background: #edf5ee;
+  color: #1b5e20;
+}
+
+.icon-btn--pdf:hover {
+  border-color: #bfa054;
+  background: #fdfaf0;
+  color: #7d5b12;
+}
+
 .icon-btn--danger:hover {
   border-color: var(--tint-danger-border);
   background: var(--tint-danger-bg);
@@ -482,6 +495,19 @@ html:has(.shell.dark-mode) body {
   color: var(--ink);
 }
 
+.shell.dark-mode .icon-btn--print:hover,
+.shell.dark-mode .icon-btn--receipt:hover {
+  border-color: #4a7550;
+  background: rgba(47, 74, 50, 0.25);
+  color: #79bf82;
+}
+
+.shell.dark-mode .icon-btn--pdf:hover {
+  border-color: #d1b86e;
+  background: rgba(191, 160, 84, 0.2);
+  color: #f1dd9a;
+}
+
 .shell.dark-mode .icon-btn--danger:hover {
   border-color: rgba(240, 145, 138, 0.45);
   background: rgba(155, 47, 47, 0.18);
@@ -603,7 +629,8 @@ html:has(.shell.dark-mode) body {
     display: none !important;
   }
 
-  .modal-backdrop--preview {
+  .modal-backdrop--preview,
+  .modal-backdrop--receipt-preview {
     position: static !important;
     inset: auto !important;
     background: transparent !important;
@@ -611,7 +638,8 @@ html:has(.shell.dark-mode) body {
     display: block !important;
   }
 
-  .modal-card--invoice {
+  .modal-card--invoice,
+  .modal-card--receipt {
     border: none !important;
     box-shadow: none !important;
     width: 100% !important;
@@ -619,6 +647,20 @@ html:has(.shell.dark-mode) body {
     padding: 0 !important;
     margin: 0 !important;
     background: #ffffff !important;
+  }
+
+  .receipt-preview-body {
+    padding: 0 !important;
+    background: transparent !important;
+  }
+
+  .receipt-dual-container {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
   }
 
   .invoice-sheet {
