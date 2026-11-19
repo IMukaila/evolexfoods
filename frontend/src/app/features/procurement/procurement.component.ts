@@ -7,6 +7,7 @@ import { ApiService } from '../../core/services/api.service';
 import { AuthService } from '../../core/services/auth.service';
 import {
   ApprovalMatrix,
+  GoodsReceiptRecord,
   PurchaseOrderRecord,
   PurchaseRequestRecord,
   PurchaseRequestsPayload,
@@ -28,7 +29,7 @@ import {
 } from './procurement.insights';
 
 type LoadState = 'loading' | 'ready' | 'error';
-type QueueTab = 'awaitingYou' | 'awaitingOthers' | 'readyForPo' | 'closed' | 'all';
+type QueueTab = 'awaitingYou' | 'awaitingOthers' | 'readyForPo' | 'ordered' | 'closed' | 'all';
 
 interface RequestForm {
   item_name: string;
@@ -48,6 +49,7 @@ const EMPTY_FORM: RequestForm = { item_name: '', category: '', quantity: null, u
  * Requests are routed on cost: ≤ GH₵1,000 a Supervisor decides (Tier 1),
  * above that the request goes directly to Executive approval (Tier 2).
  * Only an approved request can become a Purchase Order.
+ * Goods can then be received and the order closed.
  */
 @Component({
   selector: 'app-procurement',
@@ -77,6 +79,16 @@ export class ProcurementComponent implements OnInit {
   readonly busy = signal(false);
   readonly showForm = signal(false);
   readonly form = signal<RequestForm>({ ...EMPTY_FORM });
+
+  // Receiving goods state
+  readonly showReceiveModal = signal(false);
+  readonly receiveTargetPo = signal<PurchaseOrderRecord | null>(null);
+  readonly receiveTargetRequest = signal<PurchaseRequestRecord | null>(null);
+  readonly receiveQuantity = signal<number | null>(null);
+  readonly receiveDate = signal<string>(new Date().toISOString().substring(0, 10));
+  readonly receiveCondition = signal<string>('ok');
+  readonly receiveDiscrepancy = signal<string>('');
+  readonly receiveClose = signal<boolean>(false);
 
   readonly role = computed(() => this.auth.user?.role ?? '');
   readonly threshold = computed(() => this.matrix()?.executive_threshold ?? DEFAULT_EXECUTIVE_THRESHOLD);
@@ -228,7 +240,111 @@ export class ProcurementComponent implements OnInit {
 
   canDecideSelected(): boolean {
     const request = this.selected();
-    return !!request && canDecide(this.role(), request);
+    if (!request) return false;
+    const role = (this.role() || '').toLowerCase();
+    if (['owner', 'admin'].includes(role)) return true;
+    if (this.auth.hasPermission('procurement.approve')) return true;
+    return canDecide(role, request);
+  }
+
+  openReceiveForOrder(order: PurchaseOrderRecord): void {
+    this.receiveTargetPo.set(order);
+    this.receiveTargetRequest.set(order.request ?? null);
+    this.receiveQuantity.set(Number(order.request?.quantity || 1));
+    this.receiveDate.set(new Date().toISOString().substring(0, 10));
+    this.receiveCondition.set('ok');
+    this.receiveDiscrepancy.set('');
+    this.receiveClose.set(false);
+    this.showReceiveModal.set(true);
+  }
+
+  openReceiveForRequest(request: PurchaseRequestRecord): void {
+    this.receiveTargetRequest.set(request);
+    const linkedPo = request.purchase_orders?.[0] || this.orders().find(o => o.purchase_request_id === request.id) || null;
+    this.receiveTargetPo.set(linkedPo);
+    this.receiveQuantity.set(Number(request.quantity || 1));
+    this.receiveDate.set(new Date().toISOString().substring(0, 10));
+    this.receiveCondition.set('ok');
+    this.receiveDiscrepancy.set('');
+    this.receiveClose.set(false);
+    this.showReceiveModal.set(true);
+  }
+
+  closeReceiveModal(): void {
+    this.showReceiveModal.set(false);
+    this.receiveTargetPo.set(null);
+    this.receiveTargetRequest.set(null);
+  }
+
+  submitReceive(): void {
+    const po = this.receiveTargetPo();
+    const req = this.receiveTargetRequest();
+    if (!po && !req) return;
+
+    this.busy.set(true);
+    const payload = {
+      quantity_received: this.receiveQuantity(),
+      received_at: this.receiveDate(),
+      condition: this.receiveCondition(),
+      discrepancy: this.receiveDiscrepancy() || null,
+      close: this.receiveClose()
+    };
+
+    const endpoint = po ? `/procurement/orders/${po.id}/receive` : `/procurement/requests/${req!.id}/receive`;
+
+    this.api
+      .post<{ message: string }>(endpoint, payload)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
+          this.busy.set(false);
+          this.closeReceiveModal();
+          this.notice.set(res.message || 'Goods received and recorded.');
+          this.load();
+        },
+        error: (error: HttpErrorResponse) => {
+          this.busy.set(false);
+          this.notice.set(firstError(error) ?? 'Could not record goods receipt.');
+        }
+      });
+  }
+
+  closeOrder(order: PurchaseOrderRecord): void {
+    if (this.busy()) return;
+    this.busy.set(true);
+    this.api
+      .post<{ message: string }>(`/procurement/orders/${order.id}/close`, {})
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
+          this.busy.set(false);
+          this.notice.set(res.message || `Purchase order ${order.po_number} closed.`);
+          this.load();
+        },
+        error: (error: HttpErrorResponse) => {
+          this.busy.set(false);
+          this.notice.set(firstError(error) ?? 'Could not close order.');
+        }
+      });
+  }
+
+  closeRequest(request: PurchaseRequestRecord): void {
+    if (this.busy()) return;
+    this.busy.set(true);
+    this.api
+      .post<{ message: string }>(`/procurement/requests/${request.id}/close`, {})
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
+          this.busy.set(false);
+          this.notice.set(res.message || `Purchase request ${request.request_number} closed.`);
+          this.load();
+        },
+        error: (error: HttpErrorResponse) => {
+          this.busy.set(false);
+          this.notice.set(firstError(error) ?? 'Could not close request.');
+        }
+      });
   }
 
   helpers = { formatMoney, stageLabel, tierLabel, approverLabel, waitingOn, isPending };

@@ -3,7 +3,7 @@
     <div>
       <p class="eyebrow"><span class="eyebrow-dot" aria-hidden="true"></span> Evolex Hub · Supply Chain · §44–47</p>
       <h1>Procurement</h1>
-      <p class="subtitle">Purchase Request → Approval → Purchase Order. Nothing moves forward until the authorised tier has approved it.</p>
+      <p class="subtitle">Purchase Request → Approval → Purchase Order → Goods Receipt → Closed. Nothing moves forward until the authorised tier has approved it.</p>
     </div>
     <div class="head-actions">
       <span class="role-chip">Signed in as {{ role() || '—' }}</span>
@@ -76,6 +76,7 @@
     <button type="button" [class.is-active]="tab() === 'awaitingYou'" (click)="setTab('awaitingYou')">Awaiting you <span class="count-pill">{{ queues().awaitingYou.length }}</span></button>
     <button type="button" [class.is-active]="tab() === 'awaitingOthers'" (click)="setTab('awaitingOthers')">Awaiting others <span class="count-pill">{{ queues().awaitingOthers.length }}</span></button>
     <button type="button" [class.is-active]="tab() === 'readyForPo'" (click)="setTab('readyForPo')">Ready for PO <span class="count-pill">{{ queues().readyForPo.length }}</span></button>
+    <button type="button" [class.is-active]="tab() === 'ordered'" (click)="setTab('ordered')">Ordered / In Delivery <span class="count-pill">{{ queues().ordered.length }}</span></button>
     <button type="button" [class.is-active]="tab() === 'closed'" (click)="setTab('closed')">Closed <span class="count-pill">{{ queues().closed.length }}</span></button>
     <button type="button" [class.is-active]="tab() === 'all'" (click)="setTab('all')">All requests <span class="count-pill">{{ records().length }}</span></button>
   </nav>
@@ -120,6 +121,7 @@
         </dl>
         @if (request.justification) { <p class="justification">“{{ request.justification }}”</p> }
 
+        <!-- Pending Decision: Approve / Reject -->
         @if (helpers.isPending(request)) {
           <div class="decision-box">
             <label><span>Decision comment</span>
@@ -136,6 +138,7 @@
           </div>
         }
 
+        <!-- Approved: Raise PO -->
         @if (request.approval_stage === 'approved') {
           <div class="decision-box">
             <h3>Raise purchase order</h3>
@@ -148,6 +151,74 @@
             <div class="form-actions">
               <button type="button" class="btn btn--solid" [disabled]="busy()" (click)="createPurchaseOrder()">Create purchase order</button>
             </div>
+          </div>
+        }
+
+        <!-- Ordered: Goods Receipt & Close options -->
+        @if (request.approval_stage === 'ordered') {
+          <div class="decision-box">
+            <h3>Goods receipt & closure</h3>
+            <p class="meta">PO has been raised. When items arrive at the store or farm, record goods receipt or close the request.</p>
+            <div class="form-actions">
+              <button type="button" class="btn btn--solid btn--success" [disabled]="busy()" (click)="openReceiveForRequest(request)">Receive goods</button>
+              <button type="button" class="btn" [disabled]="busy()" (click)="closeRequest(request)">Close request</button>
+            </div>
+          </div>
+        }
+
+        <!-- Received: Close option -->
+        @if (request.approval_stage === 'received') {
+          <div class="decision-box">
+            <h3>Goods received</h3>
+            <p class="meta">Items have been received. Mark this request closed once fully verified.</p>
+            <div class="form-actions">
+              <button type="button" class="btn btn--solid" [disabled]="busy()" (click)="closeRequest(request)">Close request</button>
+            </div>
+          </div>
+        }
+
+        <!-- Closed: Info note -->
+        @if (request.approval_stage === 'closed') {
+          <div class="decision-box">
+            <p class="closed-note">✓ This purchase request is closed and completed.</p>
+          </div>
+        }
+
+        <!-- Linked Purchase Orders & Receipts for this request -->
+        @if (request.purchase_orders?.length) {
+          <h3>Linked purchase orders</h3>
+          <div class="order-list">
+            @for (po of request.purchase_orders; track po.id) {
+              <div class="po-detail-card">
+                <div class="order-row">
+                  <strong>{{ po.po_number }}</strong>
+                  <span class="meta">{{ po.supplier?.name || 'No supplier' }} · {{ po.ordered_at }}</span>
+                  <span class="order-amount">GH₵{{ helpers.formatMoney(po.total_amount) }}</span>
+                  <span class="stage-pill">{{ po.status }}</span>
+                  <div class="row-actions">
+                    @if (po.status === 'open') {
+                      <button type="button" class="btn btn--sm btn--solid btn--success" [disabled]="busy()" (click)="openReceiveForOrder(po)">Receive</button>
+                      <button type="button" class="btn btn--sm" [disabled]="busy()" (click)="closeOrder(po)">Close</button>
+                    } @else if (po.status === 'received') {
+                      <button type="button" class="btn btn--sm" [disabled]="busy()" (click)="closeOrder(po)">Close</button>
+                    }
+                  </div>
+                </div>
+                @if (po.receipts?.length) {
+                  <div class="receipts-sublist">
+                    @for (rc of po.receipts; track rc.id) {
+                      <div class="receipt-item">
+                        <span class="receipt-badge">Received {{ rc.quantity_received }}</span>
+                        <span class="meta">on {{ rc.received_at }} by {{ rc.receiver?.name || 'Storekeeper' }} · Condition: {{ rc.condition }}</span>
+                        @if (rc.discrepancy) {
+                          <span class="text-warning">({{ rc.discrepancy }})</span>
+                        }
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            }
           </div>
         }
 
@@ -179,14 +250,93 @@
     } @else {
       <div class="order-list">
         @for (order of orders(); track order.id) {
-          <div class="order-row">
-            <strong>{{ order.po_number }}</strong>
-            <span class="meta">{{ order.supplier?.name || 'Supplier to confirm' }} · {{ order.ordered_at }}</span>
-            <span class="order-amount">GH₵{{ helpers.formatMoney(order.total_amount) }}</span>
-            <span class="stage-pill">{{ order.status }}</span>
+          <div class="order-card">
+            <div class="order-row">
+              <strong>{{ order.po_number }}</strong>
+              <span class="meta">{{ order.supplier?.name || 'Supplier to confirm' }} · {{ order.ordered_at }}</span>
+              <span class="order-amount">GH₵{{ helpers.formatMoney(order.total_amount) }}</span>
+              <span class="stage-pill">{{ order.status }}</span>
+              <div class="row-actions">
+                @if (order.status === 'open') {
+                  <button type="button" class="btn btn--sm btn--solid btn--success" [disabled]="busy()" (click)="openReceiveForOrder(order)">Receive goods</button>
+                  <button type="button" class="btn btn--sm" [disabled]="busy()" (click)="closeOrder(order)">Close</button>
+                } @else if (order.status === 'received') {
+                  <button type="button" class="btn btn--sm" [disabled]="busy()" (click)="closeOrder(order)">Close order</button>
+                }
+              </div>
+            </div>
+            @if (order.receipts?.length) {
+              <div class="receipts-sublist">
+                @for (rc of order.receipts; track rc.id) {
+                  <div class="receipt-item">
+                    <span class="receipt-badge">Received {{ rc.quantity_received }}</span>
+                    <span class="meta">on {{ rc.received_at }} by {{ rc.receiver?.name || 'Storekeeper' }} · condition: {{ rc.condition }}</span>
+                    @if (rc.discrepancy) {
+                      <span class="text-warning">({{ rc.discrepancy }})</span>
+                    }
+                  </div>
+                }
+              </div>
+            }
           </div>
         }
       </div>
     }
   </section>
+
+  <!-- Goods Receipt Modal -->
+  @if (showReceiveModal()) {
+    <div class="modal-backdrop" (click)="closeReceiveModal()">
+      <div class="modal-card" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" aria-labelledby="receive-title">
+        <div class="modal-head">
+          <h2 id="receive-title">Record Goods Receipt</h2>
+          <button type="button" class="btn-close" (click)="closeReceiveModal()" aria-label="Close modal">✕</button>
+        </div>
+
+        <p class="subtitle">
+          @if (receiveTargetPo(); as po) {
+            Receiving items for <strong>{{ po.po_number }}</strong>
+            @if (po.request) { ({{ po.request.item_name }}) }
+          } @else if (receiveTargetRequest()) {
+            Receiving items for request <strong>{{ receiveTargetRequest()?.request_number }}</strong> ({{ receiveTargetRequest()?.item_name }})
+          }
+        </p>
+
+        <div class="form-grid modal-form">
+          <label>
+            <span>Quantity received *</span>
+            <input type="number" min="0" step="any" [ngModel]="receiveQuantity()" (ngModelChange)="receiveQuantity.set($event)" />
+          </label>
+          <label>
+            <span>Date received *</span>
+            <input type="date" [ngModel]="receiveDate()" (ngModelChange)="receiveDate.set($event)" />
+          </label>
+          <label>
+            <span>Condition</span>
+            <select [ngModel]="receiveCondition()" (ngModelChange)="receiveCondition.set($event)">
+              <option value="ok">Good / Complete</option>
+              <option value="damaged">Damaged</option>
+              <option value="partial">Partial delivery</option>
+              <option value="expired">Near expiry / Expired</option>
+            </select>
+          </label>
+          <label class="form-wide">
+            <span>Discrepancy / Remarks (optional)</span>
+            <input [ngModel]="receiveDiscrepancy()" (ngModelChange)="receiveDiscrepancy.set($event)" placeholder="e.g. 2 bags damaged in transit, supplier promised replacement" />
+          </label>
+          <label class="form-wide checkbox-label">
+            <input type="checkbox" [checked]="receiveClose()" (change)="receiveClose.set(!receiveClose())" />
+            <span>Mark order / request as <strong>closed</strong> after saving receipt</span>
+          </label>
+        </div>
+
+        <div class="form-actions modal-actions">
+          <button type="button" class="btn" (click)="closeReceiveModal()">Cancel</button>
+          <button type="button" class="btn btn--solid btn--success" [disabled]="busy() || !receiveQuantity() || receiveQuantity()! <= 0" (click)="submitReceive()">
+            Save goods receipt
+          </button>
+        </div>
+      </div>
+    </div>
+  }
 </main>

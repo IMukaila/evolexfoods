@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\AuditLog;
+use App\Models\GoodsReceipt;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestApproval;
@@ -125,6 +126,8 @@ class ProcurementApprovalService
             'approved' => 'approved',
             'rejected' => 'rejected',
             'ordered', 'converted' => 'ordered',
+            'received' => 'received',
+            'closed' => 'closed',
             default => $this->tierOf($request) === 2 ? 'pending_tier_2' : 'pending_tier_1',
         };
     }
@@ -252,6 +255,130 @@ class ProcurementApprovalService
             ]);
 
             return $order;
+        });
+    }
+
+    /**
+     * Record receipt of goods against a Purchase Order and update statuses.
+     */
+    public function receiveOrder(PurchaseOrder $order, User $actor, array $data = []): GoodsReceipt
+    {
+        return DB::transaction(function () use ($order, $actor, $data) {
+            $qty = $data['quantity_received'] ?? $order->request?->quantity ?? 1;
+            $receipt = GoodsReceipt::create([
+                'purchase_order_id' => $order->id,
+                'received_at' => $data['received_at'] ?? now()->toDateString(),
+                'quantity_received' => $qty,
+                'condition' => $data['condition'] ?? 'ok',
+                'discrepancy' => $data['discrepancy'] ?? null,
+                'received_by' => $actor->id,
+            ]);
+
+            $isClose = ! empty($data['close']);
+            $newStatus = $isClose ? 'closed' : 'received';
+
+            $order->update(['status' => $newStatus]);
+
+            if ($order->request) {
+                $order->request->update([
+                    'status' => $newStatus,
+                    'approval_stage' => $newStatus,
+                ]);
+            }
+
+            AuditLog::create([
+                'user_id' => $actor->id,
+                'action' => $isClose ? 'purchase.received_and_closed' : 'purchase.goods_received',
+                'auditable_type' => GoodsReceipt::class,
+                'auditable_id' => $receipt->id,
+                'meta' => [
+                    'po_number' => $order->po_number,
+                    'quantity_received' => $qty,
+                    'condition' => $receipt->condition,
+                    'status' => $newStatus,
+                ],
+            ]);
+
+            return $receipt;
+        });
+    }
+
+    /**
+     * Close a purchase order and its parent request.
+     */
+    public function closeOrder(PurchaseOrder $order, User $actor): PurchaseOrder
+    {
+        return DB::transaction(function () use ($order, $actor) {
+            $order->update(['status' => 'closed']);
+
+            if ($order->request) {
+                $order->request->update([
+                    'status' => 'closed',
+                    'approval_stage' => 'closed',
+                ]);
+            }
+
+            AuditLog::create([
+                'user_id' => $actor->id,
+                'action' => 'purchase.order_closed',
+                'auditable_type' => PurchaseOrder::class,
+                'auditable_id' => $order->id,
+                'meta' => [
+                    'po_number' => $order->po_number,
+                    'request_number' => $order->request?->request_number,
+                ],
+            ]);
+
+            return $order;
+        });
+    }
+
+    /**
+     * Receive goods directly from a Purchase Request.
+     */
+    public function receiveRequest(PurchaseRequest $request, User $actor, array $data = []): GoodsReceipt
+    {
+        // If request does not have a purchase order yet, create one
+        $order = $request->purchaseOrders()->latest()->first();
+        if (! $order) {
+            if (! in_array($request->status, ['approved', 'ordered', 'received'], true)) {
+                $request->update(['status' => 'approved', 'approval_stage' => 'approved']);
+            }
+            $order = $this->createPurchaseOrder($request, $actor, [
+                'supplier_id' => $data['supplier_id'] ?? null,
+                'total_amount' => $request->estimated_cost ?? 0,
+            ]);
+        }
+
+        return $this->receiveOrder($order, $actor, $data);
+    }
+
+    /**
+     * Close a purchase request directly.
+     */
+    public function closeRequest(PurchaseRequest $request, User $actor): PurchaseRequest
+    {
+        return DB::transaction(function () use ($request, $actor) {
+            $request->update([
+                'status' => 'closed',
+                'approval_stage' => 'closed',
+            ]);
+
+            foreach ($request->purchaseOrders as $order) {
+                if ($order->status !== 'closed') {
+                    $order->update(['status' => 'closed']);
+                }
+            }
+
+            AuditLog::create([
+                'user_id' => $actor->id,
+                'action' => 'purchase.request_closed',
+                'auditable_type' => PurchaseRequest::class,
+                'auditable_id' => $request->id,
+                'meta' => ['request_number' => $request->request_number],
+            ]);
+
+            return $request;
         });
     }
 }

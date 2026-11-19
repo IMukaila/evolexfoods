@@ -9,7 +9,7 @@
  */
 
 export type ApprovalTier = 1 | 2;
-export type ApprovalStage = 'pending_tier_1' | 'pending_tier_2' | 'approved' | 'rejected' | 'ordered';
+export type ApprovalStage = 'pending_tier_1' | 'pending_tier_2' | 'approved' | 'rejected' | 'ordered' | 'received' | 'closed';
 
 export interface PurchaseRequestRecord {
   id: number;
@@ -32,6 +32,7 @@ export interface PurchaseRequestRecord {
   requires_executive?: boolean;
   requester?: { id: number; name: string; role?: string } | null;
   approvals?: PurchaseApprovalRecord[];
+  purchase_orders?: PurchaseOrderRecord[];
 }
 
 export interface PurchaseApprovalRecord {
@@ -76,6 +77,17 @@ export interface PurchaseRequestsPayload {
   source: string;
 }
 
+export interface GoodsReceiptRecord {
+  id: number;
+  purchase_order_id: number;
+  received_at: string;
+  quantity_received: number | string;
+  condition: string;
+  discrepancy?: string | null;
+  received_by?: number | null;
+  receiver?: { id: number; name: string; role?: string } | null;
+}
+
 export interface PurchaseOrderRecord {
   id: number;
   po_number: string;
@@ -85,17 +97,21 @@ export interface PurchaseOrderRecord {
   total_amount: number | string;
   status: string;
   supplier?: { id: number; name: string } | null;
+  receipts?: GoodsReceiptRecord[];
+  request?: PurchaseRequestRecord | null;
 }
 
 export interface PurchasesPayload {
-  purchase_orders: PurchaseOrderRecord[];
-  goods_receipts: unknown[];
   count: number;
+  purchase_orders: PurchaseOrderRecord[];
   source: string;
 }
 
 export interface SupplierRecord {
   id: number;
   name: string;
-  code?: string;
+  category?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  is_active?: boolean;
 }

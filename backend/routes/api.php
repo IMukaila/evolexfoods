@@ -91,6 +91,10 @@ Route::prefix('v1')->group(function () {
         Route::post('/procurement/requests/{id}/approve', [ProcurementController::class, 'approve'])->whereNumber('id');
         Route::post('/procurement/requests/{id}/reject', [ProcurementController::class, 'reject'])->whereNumber('id');
         Route::post('/procurement/requests/{id}/purchase-order', [ProcurementController::class, 'createPurchaseOrder'])->whereNumber('id');
+        Route::post('/procurement/requests/{id}/receive', [ProcurementController::class, 'receiveRequest'])->whereNumber('id');
+        Route::post('/procurement/requests/{id}/close', [ProcurementController::class, 'closeRequest'])->whereNumber('id');
+        Route::post('/procurement/orders/{id}/receive', [ProcurementController::class, 'receiveOrder'])->whereNumber('id');
+        Route::post('/procurement/orders/{id}/close', [ProcurementController::class, 'closeOrder'])->whereNumber('id');
         Route::get('/procurement/requests/{id}/approvals', [ProcurementController::class, 'approvals']);
         Route::get('/procurement/purchases', [ProcurementController::class, 'purchases']);
         Route::get('/suppliers', [ProcurementController::class, 'suppliers']);

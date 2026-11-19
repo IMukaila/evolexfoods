@@ -45,6 +45,8 @@ class PurchaseRequest extends Model
             'approved' => 'approved',
             'rejected' => 'rejected',
             'ordered', 'converted' => 'ordered',
+            'received' => 'received',
+            'closed' => 'closed',
             default => $this->approval_tier === 2 ? 'pending_tier_2' : 'pending_tier_1',
         };
     }

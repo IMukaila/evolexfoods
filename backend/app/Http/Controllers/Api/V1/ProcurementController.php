@@ -19,7 +19,7 @@ class ProcurementController extends Controller
 
     public function requests(): JsonResponse
     {
-        $requests = PurchaseRequest::with(['requester', 'approvals.approver'])
+        $requests = PurchaseRequest::with(['requester', 'approvals.approver', 'purchaseOrders.receipts.receiver', 'purchaseOrders.supplier'])
             ->orderByDesc('requested_at')
             ->get()
             ->map(fn (PurchaseRequest $r) => $this->present($r));
@@ -30,6 +30,9 @@ class ProcurementController extends Controller
             'pending' => $requests->where('status', 'pending')->count(),
             'pending_tier_1' => $requests->where('approval_stage', 'pending_tier_1')->count(),
             'pending_tier_2' => $requests->where('approval_stage', 'pending_tier_2')->count(),
+            'ordered' => $requests->where('status', 'ordered')->count(),
+            'received' => $requests->where('status', 'received')->count(),
+            'closed' => $requests->where('status', 'closed')->count(),
             'approval_matrix' => $this->matrix->matrix(),
             'records' => $requests,
             'source' => 'purchase_requests',
@@ -95,8 +98,76 @@ class ProcurementController extends Controller
         $row['tier_label'] = $this->matrix->tierConfig($tier)['label'] ?? ('Tier '.$tier);
         $row['approver_label'] = $this->matrix->tierConfig($tier)['approver_label'] ?? null;
         $row['requires_executive'] = $tier === 2;
+        $row['purchase_orders'] = $request->relationLoaded('purchaseOrders') ? $request->purchaseOrders : $request->purchaseOrders()->with(['supplier', 'receipts.receiver'])->get();
 
         return $row;
+    }
+
+    /** Record goods receipt against a Purchase Order and update statuses. */
+    public function receiveOrder(Request $request, int $id): JsonResponse
+    {
+        $data = $request->validate([
+            'quantity_received' => 'nullable|numeric|min:0',
+            'received_at' => 'nullable|date',
+            'condition' => 'nullable|string|max:50',
+            'discrepancy' => 'nullable|string|max:1000',
+            'close' => 'nullable|boolean',
+        ]);
+
+        $order = PurchaseOrder::with(['request', 'receipts.receiver', 'supplier'])->findOrFail($id);
+        $receipt = $this->matrix->receiveOrder($order, $request->user(), $data);
+
+        return response()->json([
+            'receipt' => $receipt->load('receiver'),
+            'order' => $order->fresh(['supplier', 'request', 'receipts.receiver']),
+            'message' => 'Goods receipt recorded successfully.',
+        ]);
+    }
+
+    /** Close a Purchase Order. */
+    public function closeOrder(Request $request, int $id): JsonResponse
+    {
+        $order = PurchaseOrder::with(['request', 'receipts.receiver', 'supplier'])->findOrFail($id);
+        $this->matrix->closeOrder($order, $request->user());
+
+        return response()->json([
+            'order' => $order->fresh(['supplier', 'request', 'receipts.receiver']),
+            'message' => 'Purchase order closed successfully.',
+        ]);
+    }
+
+    /** Record goods receipt directly for a Purchase Request. */
+    public function receiveRequest(Request $request, int $id): JsonResponse
+    {
+        $data = $request->validate([
+            'quantity_received' => 'nullable|numeric|min:0',
+            'received_at' => 'nullable|date',
+            'condition' => 'nullable|string|max:50',
+            'discrepancy' => 'nullable|string|max:1000',
+            'supplier_id' => 'nullable|exists:suppliers,id',
+            'close' => 'nullable|boolean',
+        ]);
+
+        $purchaseRequest = PurchaseRequest::with(['requester', 'approvals.approver', 'purchaseOrders'])->findOrFail($id);
+        $receipt = $this->matrix->receiveRequest($purchaseRequest, $request->user(), $data);
+
+        return response()->json([
+            'receipt' => $receipt->load('receiver'),
+            'request' => $this->present($purchaseRequest->fresh(['requester', 'approvals.approver', 'purchaseOrders.receipts.receiver'])),
+            'message' => 'Goods receipt recorded successfully.',
+        ]);
+    }
+
+    /** Close a Purchase Request. */
+    public function closeRequest(Request $request, int $id): JsonResponse
+    {
+        $purchaseRequest = PurchaseRequest::with(['requester', 'approvals.approver', 'purchaseOrders'])->findOrFail($id);
+        $this->matrix->closeRequest($purchaseRequest, $request->user());
+
+        return response()->json([
+            'request' => $this->present($purchaseRequest->fresh(['requester', 'approvals.approver', 'purchaseOrders.receipts.receiver'])),
+            'message' => 'Purchase request closed successfully.',
+        ]);
     }
 
     public function approvals(int $id): JsonResponse
@@ -113,8 +184,8 @@ class ProcurementController extends Controller
 
     public function purchases(): JsonResponse
     {
-        $orders = PurchaseOrder::with(['supplier', 'request', 'receipts'])->orderByDesc('ordered_at')->get();
-        $receipts = GoodsReceipt::with('purchaseOrder')->orderByDesc('received_at')->get();
+        $orders = PurchaseOrder::with(['supplier', 'request', 'receipts.receiver'])->orderByDesc('ordered_at')->get();
+        $receipts = GoodsReceipt::with(['purchaseOrder.request', 'receiver'])->orderByDesc('received_at')->get();
 
         return response()->json([
             'question' => 18,

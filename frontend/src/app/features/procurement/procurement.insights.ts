@@ -50,6 +50,10 @@ export function stageOf(request: PurchaseRequestRecord): ApprovalStage {
     case 'ordered':
     case 'converted':
       return 'ordered';
+    case 'received':
+      return 'received';
+    case 'closed':
+      return 'closed';
     default:
       return tierOf(request) === 2 ? 'pending_tier_2' : 'pending_tier_1';
   }
@@ -96,6 +100,10 @@ export function stageLabel(stage: ApprovalStage | string): string {
       return 'Rejected';
     case 'ordered':
       return 'Purchase order raised';
+    case 'received':
+      return 'Goods received';
+    case 'closed':
+      return 'Closed';
     default:
       return String(stage).replace(/_/g, ' ');
   }
@@ -116,17 +124,21 @@ export interface ApprovalQueues {
   awaitingOthers: PurchaseRequestRecord[];
   /** Approved and ready to become a Purchase Order. */
   readyForPo: PurchaseRequestRecord[];
-  /** Rejected or already converted to a PO. */
+  /** PO raised / awaiting delivery. */
+  ordered: PurchaseRequestRecord[];
+  /** Rejected, received or fully closed. */
   closed: PurchaseRequestRecord[];
 }
 
 export function buildQueues(records: PurchaseRequestRecord[], role: string | null | undefined): ApprovalQueues {
-  const queues: ApprovalQueues = { awaitingYou: [], awaitingOthers: [], readyForPo: [], closed: [] };
+  const queues: ApprovalQueues = { awaitingYou: [], awaitingOthers: [], readyForPo: [], ordered: [], closed: [] };
   for (const request of records) {
     const stage = stageOf(request);
     if (stage === 'approved') {
       queues.readyForPo.push(request);
-    } else if (stage === 'rejected' || stage === 'ordered') {
+    } else if (stage === 'ordered') {
+      queues.ordered.push(request);
+    } else if (stage === 'rejected' || stage === 'received' || stage === 'closed') {
       queues.closed.push(request);
     } else if (canDecide(role, request)) {
       queues.awaitingYou.push(request);
