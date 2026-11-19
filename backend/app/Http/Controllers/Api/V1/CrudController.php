@@ -97,6 +97,10 @@ class CrudController extends Controller
             $this->syncLivestockDeathState($record);
         }
 
+        if ($resource === 'pregnancies') {
+            $this->syncAnimalPregnancyState($record);
+        }
+
         if (! empty($config['with'])) {
             $record->load($config['with']);
         }
@@ -127,6 +131,10 @@ class CrudController extends Controller
 
         if ($resource === 'livestock') {
             $this->syncLivestockDeathState($record);
+        }
+
+        if ($resource === 'pregnancies') {
+            $this->syncAnimalPregnancyState($record);
         }
 
         if (! empty($config['with'])) {
@@ -166,6 +174,36 @@ class CrudController extends Controller
         }
     }
 
+    private function syncAnimalPregnancyState(Model $pregnancy): void
+    {
+        $this->syncAnimalPregnancyStateByAnimalId((int) $pregnancy->animal_id);
+    }
+
+    private function syncAnimalPregnancyStateByAnimalId(int $animalId): void
+    {
+        $animal = Animal::find($animalId);
+        if (! $animal) {
+            return;
+        }
+
+        $activePregnancy = Pregnancy::where('animal_id', $animalId)
+            ->where('status', 'active')
+            ->orderBy('expected_birth_date')
+            ->first();
+
+        if ($activePregnancy) {
+            $animal->update([
+                'pregnancy_status' => 'pregnant',
+                'expected_birth_date' => $activePregnancy->expected_birth_date,
+            ]);
+        } else {
+            $animal->update([
+                'pregnancy_status' => 'open',
+                'expected_birth_date' => null,
+            ]);
+        }
+    }
+
     public function destroy(Request|string $request, string|int $resource, ?int $id = null): JsonResponse
     {
         if (is_string($request)) {
@@ -182,6 +220,7 @@ class CrudController extends Controller
         $config = $this->config($actualResource);
         $record = $config['model']::findOrFail($actualId);
         $invoiceId = $actualResource === 'payments' ? (int) $record->invoice_id : null;
+        $pregnancyAnimalId = $actualResource === 'pregnancies' ? (int) $record->animal_id : null;
 
         if ($actualResource === 'invoices' && Payment::where('invoice_id', $record->id)->exists()) {
             return response()->json([
@@ -201,6 +240,8 @@ class CrudController extends Controller
 
         if ($actualResource === 'payments') {
             $this->syncInvoicePaymentStatus($invoiceId);
+        } elseif ($actualResource === 'pregnancies' && ! empty($pregnancyAnimalId)) {
+            $this->syncAnimalPregnancyStateByAnimalId($pregnancyAnimalId);
         }
 
         return response()->json(['deleted' => true]);
