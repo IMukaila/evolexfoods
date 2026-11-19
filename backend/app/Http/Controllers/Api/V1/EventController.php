@@ -225,7 +225,7 @@ class EventController extends Controller
 
     public function locations(): JsonResponse
     {
-        return response()->json(\App\Models\Location::orderBy('name')->get());
+        return response()->json(\App\Models\Location::whereIn('type', ['paddock', 'barn', 'pen'])->orderBy('name')->get());
     }
 
     private function logEvent(int $animalId, string $type, Request $request, array $payload): void

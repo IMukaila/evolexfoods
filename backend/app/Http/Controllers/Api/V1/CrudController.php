@@ -84,6 +84,9 @@ class CrudController extends Controller
         if ($resource === 'livestock') {
             $rules['animal_id'] = 'nullable|string|max:40|unique:animals,animal_id';
         }
+        if ($resource === 'stores' || $resource === 'locations') {
+            $rules['code'] = 'nullable|string|max:50|unique:locations,code';
+        }
         $data = $request->validate($rules);
         $data = $this->beforeSave($resource, $data, $request, null);
         $record = $config['model']::create($data);
@@ -116,6 +119,9 @@ class CrudController extends Controller
         $rules = $config['rules'];
         if ($resource === 'livestock') {
             $rules['animal_id'] = 'nullable|string|max:40|unique:animals,animal_id,'.$id;
+        }
+        if ($resource === 'stores' || $resource === 'locations') {
+            $rules['code'] = 'nullable|string|max:50|unique:locations,code,'.$id;
         }
         $data = $request->validate($rules);
         $data = $this->beforeSave($resource, $data, $request, $record);
@@ -254,7 +260,8 @@ class CrudController extends Controller
         }
 
         return response()->json([
-            'locations' => Location::orderBy('name')->get(['id', 'name', 'code']),
+            'locations' => Location::orderBy('name')->get(['id', 'name', 'code', 'type', 'status']),
+            'stores' => Location::orderBy('name')->get(['id', 'name', 'code', 'type', 'status']),
             'suppliers' => Supplier::orderBy('name')->get(['id', 'name', 'code']),
             'users' => User::orderBy('name')->get(['id', 'name', 'email', 'role']),
             'employees' => Employee::orderBy('name')->get(['id', 'name', 'employee_code']),
@@ -329,6 +336,24 @@ class CrudController extends Controller
         if ($resource === 'suppliers' && empty($data['code'])) {
             $next = Supplier::count() + 1;
             $data['code'] = 'SUP-'.str_pad((string) $next, 3, '0', STR_PAD_LEFT);
+        }
+
+        if (($resource === 'stores' || $resource === 'locations') && empty($data['code'])) {
+            $type = strtolower($data['type'] ?? 'store');
+            $prefix = match ($type) {
+                'store', 'warehouse', 'cold_storage', 'silo' => 'STR-',
+                'barn' => 'BRN-',
+                'pen' => 'PEN-',
+                'paddock' => 'PAD-',
+                default => 'LOC-',
+            };
+            $next = Location::count() + 1;
+            $data['code'] = $prefix.str_pad((string) $next, 3, '0', STR_PAD_LEFT);
+        }
+
+        if ($resource === 'stores' || $resource === 'locations') {
+            $data['status'] = $data['status'] ?? 'active';
+            $data['type'] = $data['type'] ?? ($resource === 'stores' ? 'store' : 'paddock');
         }
 
         if ($resource === 'employees' && empty($data['employee_code'])) {
@@ -519,6 +544,32 @@ class CrudController extends Controller
                     'rating' => 'nullable|numeric',
                     'status' => 'nullable|string',
                     'notes' => 'nullable|string',
+                ],
+            ],
+            'stores' => [
+                'model' => Location::class,
+                'with' => [],
+                'search' => ['code', 'name', 'type', 'address', 'status'],
+                'rules' => [
+                    'code' => 'nullable|string|max:50',
+                    'name' => 'required|string|max:255',
+                    'type' => 'nullable|string|max:50',
+                    'address' => 'nullable|string|max:255',
+                    'capacity' => 'nullable|numeric|min:0',
+                    'status' => 'nullable|in:active,inactive',
+                ],
+            ],
+            'locations' => [
+                'model' => Location::class,
+                'with' => [],
+                'search' => ['code', 'name', 'type', 'address', 'status'],
+                'rules' => [
+                    'code' => 'nullable|string|max:50',
+                    'name' => 'required|string|max:255',
+                    'type' => 'nullable|string|max:50',
+                    'address' => 'nullable|string|max:255',
+                    'capacity' => 'nullable|numeric|min:0',
+                    'status' => 'nullable|in:active,inactive',
                 ],
             ],
             'procurement' => [

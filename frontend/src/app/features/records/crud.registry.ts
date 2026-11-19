@@ -4,7 +4,7 @@ export interface FieldDef {
   type: 'text' | 'email' | 'number' | 'date' | 'select' | 'textarea';
   required?: boolean;
   options?: { value: string; label: string }[];
-  lookup?: 'locations' | 'suppliers' | 'users' | 'employees' | 'animals' | 'assets' | 'companies' | 'contacts' | 'pipeline_stages' | 'media_assets' | 'invoices';
+  lookup?: 'locations' | 'stores' | 'suppliers' | 'users' | 'employees' | 'animals' | 'assets' | 'companies' | 'contacts' | 'pipeline_stages' | 'media_assets' | 'invoices';
   lookupValue?: string;
   lookupLabel?: string;
   hidden?: boolean;
@@ -29,7 +29,8 @@ export interface AdvancedFilterDef {
   type: 'select' | 'text' | 'date' | 'number';
   placeholder?: string;
   options?: AdvancedFilterOption[];
-  lookup?: 'locations' | 'suppliers' | 'users' | 'employees' | 'animals' | 'assets' | 'companies' | 'contacts' | 'pipeline_stages' | 'media_assets';
+  lookup?: 'locations' | 'stores' | 'suppliers' | 'users' | 'employees' | 'animals' | 'assets' | 'companies' | 'contacts' | 'pipeline_stages' | 'media_assets';
+  lookupValue?: string;
   filterFn?: (row: any, value: any) => boolean;
 }
 
@@ -150,6 +151,284 @@ export const CRUD_RESOURCES: Record<string, ResourceDef> = {
     ],
     defaults: { status: 'active' }
   },
+  stores: {
+    title: 'Stores & Storage Locations',
+    subtitle: 'Feed stores, medicine clinics, silos, cold storage and farm warehouses.',
+    recordLabel: 'Store / Location',
+    columns: [
+      { key: 'code', label: 'Code', render: (row) => `<strong>${row.code || '-'}</strong>` },
+      {
+        key: 'name',
+        label: 'Store / Location Name',
+        render: (row) => {
+          const type = (row.type || 'store').toLowerCase();
+          const icon = ['store', 'warehouse'].includes(type) ? '🏬'
+            : type === 'cold_storage' ? '❄️'
+            : type === 'silo' ? '🌾'
+            : type === 'barn' ? '🛖'
+            : type === 'pen' ? '🐐'
+            : type === 'paddock' ? '🌿'
+            : '📍';
+          return `<strong>${icon} ${row.name}</strong>${row.address ? `<div class="sub-text">${row.address}</div>` : ''}`;
+        }
+      },
+      {
+        key: 'type',
+        label: 'Type',
+        render: (row) => `<span class="badge badge-subtle ${String(row.type || 'store').toLowerCase().replace(/[^a-z0-9]/g, '_')}">${(row.type || 'store').toUpperCase()}</span>`
+      },
+      {
+        key: 'capacity',
+        label: 'Capacity',
+        render: (row) => row.capacity !== null && row.capacity !== undefined ? `<strong>${Number(row.capacity).toLocaleString()}</strong>` : '-'
+      },
+      { key: 'address', label: 'Physical Zone / Room' },
+      {
+        key: 'status',
+        label: 'Status',
+        render: (row) => {
+          const st = (row.status || 'active').toLowerCase();
+          return st === 'active'
+            ? '<span class="badge badge-active">Active</span>'
+            : '<span class="badge badge-inactive">Inactive</span>';
+        }
+      }
+    ],
+    fields: [
+      { key: 'code', label: 'Store Code', type: 'text', placeholder: 'Auto-generated if blank (e.g. STR-006)' },
+      { key: 'name', label: 'Store / Location Name', type: 'text', required: true, placeholder: 'e.g. Feed Store, Clinic Store, Bulk Silo' },
+      { key: 'type', label: 'Facility Type', type: 'select', required: true, options: [
+        { value: 'store', label: 'Store (Feed, Clinic, Supplies, Tools)' },
+        { value: 'warehouse', label: 'Warehouse / Central Depot' },
+        { value: 'cold_storage', label: 'Cold Storage / Refrigerator' },
+        { value: 'silo', label: 'Feed / Grain Silo' },
+        { value: 'barn', label: 'Barn / Animal Housing' },
+        { value: 'pen', label: 'Pen / Quarantine Yard' },
+        { value: 'paddock', label: 'Paddock / Grazing Field' },
+        { value: 'processing', label: 'Processing & Packaging Unit' },
+        { value: 'other', label: 'Other Facility' }
+      ]},
+      { key: 'capacity', label: 'Storage / Holding Capacity', type: 'number', placeholder: 'e.g. 1000' },
+      { key: 'address', label: 'Location Zone / Room / Bay', type: 'text', placeholder: 'e.g. Supply Yard, Bay 1' },
+      { key: 'status', label: 'Status', type: 'select', options: [
+        { value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }
+      ]}
+    ],
+    defaults: { type: 'store', status: 'active' },
+    quickFilters: [
+      { id: 'all', label: 'All Facilities', filterFn: () => true },
+      {
+        id: 'stores',
+        label: '🏬 Stores & Warehouses',
+        badgeClass: 'info',
+        filterFn: (row) => ['store', 'warehouse', 'cold_storage', 'silo'].includes((row.type || '').toLowerCase())
+      },
+      {
+        id: 'enclosures',
+        label: '🛖 Barns & Pens',
+        filterFn: (row) => ['barn', 'pen', 'paddock'].includes((row.type || '').toLowerCase())
+      },
+      {
+        id: 'active',
+        label: '✅ Active Only',
+        badgeClass: 'ok',
+        filterFn: (row) => (row.status || '').toLowerCase() === 'active'
+      }
+    ],
+    advancedFilters: [
+      {
+        key: 'type',
+        label: 'Facility Type',
+        type: 'select',
+        placeholder: 'All Types',
+        options: [
+          { value: 'store', label: 'Store' },
+          { value: 'warehouse', label: 'Warehouse' },
+          { value: 'cold_storage', label: 'Cold Storage' },
+          { value: 'silo', label: 'Silo' },
+          { value: 'barn', label: 'Barn' },
+          { value: 'pen', label: 'Pen' },
+          { value: 'paddock', label: 'Paddock' }
+        ],
+        filterFn: (row, val) => !val || (row.type || '').toLowerCase() === String(val).toLowerCase()
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        type: 'select',
+        options: [{ value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }],
+        filterFn: (row, val) => !val || (row.status || '').toLowerCase() === String(val).toLowerCase()
+      }
+    ],
+        kpiDefs: [
+      {
+        label: 'Stores & Warehouses',
+        compute: (rows: any[]) => {
+          const count = rows.filter((r: any) => ['store', 'warehouse', 'cold_storage', 'silo'].includes((r.type || '').toLowerCase())).length;
+          return { label: 'Stores & Warehouses', value: count, info: true, meta: 'Supply & medicine stores' };
+        }
+      },
+      {
+        label: 'Active Facilities',
+        compute: (rows: any[]) => {
+          const active = rows.filter((r: any) => (r.status || '').toLowerCase() === 'active').length;
+          return { label: 'Active Facilities', value: active, ok: true, meta: 'In operational use' };
+        }
+      },
+      {
+        label: 'Total Capacity',
+        compute: (rows: any[]) => {
+          const totalCap = rows.reduce((sum: number, r: any) => sum + (Number(r.capacity) || 0), 0);
+          return { label: 'Total Capacity', value: totalCap > 0 ? totalCap.toLocaleString() : '-', meta: 'Holding limits' };
+        }
+      },
+      {
+        label: 'Total Facilities',
+        compute: (rows: any[]) => {
+          return { label: 'Total Facilities', value: rows.length, meta: 'All farm locations' };
+        }
+      }
+    ]
+  },
+  locations: {
+    title: 'Stores & Locations',
+    subtitle: 'Farm stores, feed storage, medicine clinics, silos, paddocks and barns.',
+    recordLabel: 'Location',
+    columns: [
+      { key: 'code', label: 'Code', render: (row) => `<strong>${row.code || '-'}</strong>` },
+      {
+        key: 'name',
+        label: 'Location Name',
+        render: (row) => {
+          const type = (row.type || 'store').toLowerCase();
+          const icon = ['store', 'warehouse'].includes(type) ? '🏬'
+            : type === 'cold_storage' ? '❄️'
+            : type === 'silo' ? '🌾'
+            : type === 'barn' ? '🛖'
+            : type === 'pen' ? '🐐'
+            : type === 'paddock' ? '🌿'
+            : '📍';
+          return `<strong>${icon} ${row.name}</strong>${row.address ? `<div class="sub-text">${row.address}</div>` : ''}`;
+        }
+      },
+      {
+        key: 'type',
+        label: 'Type',
+        render: (row) => `<span class="badge badge-subtle ${String(row.type || 'store').toLowerCase().replace(/[^a-z0-9]/g, '_')}">${(row.type || 'store').toUpperCase()}</span>`
+      },
+      {
+        key: 'capacity',
+        label: 'Capacity',
+        render: (row) => row.capacity !== null && row.capacity !== undefined ? `<strong>${Number(row.capacity).toLocaleString()}</strong>` : '-'
+      },
+      { key: 'address', label: 'Physical Zone / Room' },
+      {
+        key: 'status',
+        label: 'Status',
+        render: (row) => {
+          const st = (row.status || 'active').toLowerCase();
+          return st === 'active'
+            ? '<span class="badge badge-active">Active</span>'
+            : '<span class="badge badge-inactive">Inactive</span>';
+        }
+      }
+    ],
+    fields: [
+      { key: 'code', label: 'Location Code', type: 'text', placeholder: 'Auto-generated if blank (e.g. STR-006)' },
+      { key: 'name', label: 'Location Name', type: 'text', required: true, placeholder: 'e.g. Feed Store, Clinic Store, Bulk Silo' },
+      { key: 'type', label: 'Facility Type', type: 'select', required: true, options: [
+        { value: 'store', label: 'Store (Feed, Clinic, Supplies, Tools)' },
+        { value: 'warehouse', label: 'Warehouse / Central Depot' },
+        { value: 'cold_storage', label: 'Cold Storage / Refrigerator' },
+        { value: 'silo', label: 'Feed / Grain Silo' },
+        { value: 'barn', label: 'Barn / Animal Housing' },
+        { value: 'pen', label: 'Pen / Quarantine Yard' },
+        { value: 'paddock', label: 'Paddock / Grazing Field' },
+        { value: 'processing', label: 'Processing & Packaging Unit' },
+        { value: 'other', label: 'Other Facility' }
+      ]},
+      { key: 'capacity', label: 'Storage / Holding Capacity', type: 'number', placeholder: 'e.g. 1000' },
+      { key: 'address', label: 'Location Zone / Room / Bay', type: 'text', placeholder: 'e.g. Supply Yard, Bay 1' },
+      { key: 'status', label: 'Status', type: 'select', options: [
+        { value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }
+      ]}
+    ],
+    defaults: { type: 'store', status: 'active' },
+    quickFilters: [
+      { id: 'all', label: 'All Facilities', filterFn: () => true },
+      {
+        id: 'stores',
+        label: '🏬 Stores & Warehouses',
+        badgeClass: 'info',
+        filterFn: (row) => ['store', 'warehouse', 'cold_storage', 'silo'].includes((row.type || '').toLowerCase())
+      },
+      {
+        id: 'enclosures',
+        label: '🛖 Barns & Pens',
+        filterFn: (row) => ['barn', 'pen', 'paddock'].includes((row.type || '').toLowerCase())
+      },
+      {
+        id: 'active',
+        label: '✅ Active Only',
+        badgeClass: 'ok',
+        filterFn: (row) => (row.status || '').toLowerCase() === 'active'
+      }
+    ],
+    advancedFilters: [
+      {
+        key: 'type',
+        label: 'Facility Type',
+        type: 'select',
+        placeholder: 'All Types',
+        options: [
+          { value: 'store', label: 'Store' },
+          { value: 'warehouse', label: 'Warehouse' },
+          { value: 'cold_storage', label: 'Cold Storage' },
+          { value: 'silo', label: 'Silo' },
+          { value: 'barn', label: 'Barn' },
+          { value: 'pen', label: 'Pen' },
+          { value: 'paddock', label: 'Paddock' }
+        ],
+        filterFn: (row, val) => !val || (row.type || '').toLowerCase() === String(val).toLowerCase()
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        type: 'select',
+        options: [{ value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' }],
+        filterFn: (row, val) => !val || (row.status || '').toLowerCase() === String(val).toLowerCase()
+      }
+    ],
+        kpiDefs: [
+      {
+        label: 'Stores & Warehouses',
+        compute: (rows: any[]) => {
+          const count = rows.filter((r: any) => ['store', 'warehouse', 'cold_storage', 'silo'].includes((r.type || '').toLowerCase())).length;
+          return { label: 'Stores & Warehouses', value: count, info: true, meta: 'Supply & medicine stores' };
+        }
+      },
+      {
+        label: 'Active Facilities',
+        compute: (rows: any[]) => {
+          const active = rows.filter((r: any) => (r.status || '').toLowerCase() === 'active').length;
+          return { label: 'Active Facilities', value: active, ok: true, meta: 'In operational use' };
+        }
+      },
+      {
+        label: 'Total Capacity',
+        compute: (rows: any[]) => {
+          const totalCap = rows.reduce((sum: number, r: any) => sum + (Number(r.capacity) || 0), 0);
+          return { label: 'Total Capacity', value: totalCap > 0 ? totalCap.toLocaleString() : '-', meta: 'Holding limits' };
+        }
+      },
+      {
+        label: 'Total Facilities',
+        compute: (rows: any[]) => {
+          return { label: 'Total Facilities', value: rows.length, meta: 'All farm locations' };
+        }
+      }
+    ]
+  },
   inventory: {
     title: 'Inventory Items',
     subtitle: 'Stock levels, reorder points, storage locations and categories.',
@@ -202,7 +481,7 @@ export const CRUD_RESOURCES: Record<string, ResourceDef> = {
         { value: 'Tools', label: 'Tools' }, { value: 'PPE', label: 'PPE' }, { value: 'Fuel', label: 'Fuel' }, { value: 'Spare Parts', label: 'Spare Parts' }
       ]},
       { key: 'unit', label: 'Unit', type: 'text' },
-      { key: 'storage_location', label: 'Storage', type: 'text' },
+      { key: 'storage_location', label: 'Store / Storage Location', type: 'select', lookup: 'stores', lookupValue: 'name' },
       { key: 'quantity_on_hand', label: 'Quantity on hand', type: 'number' },
       { key: 'average_cost', label: 'Average cost', type: 'number' },
       { key: 'supplier_id', label: 'Supplier', type: 'select', lookup: 'suppliers' },

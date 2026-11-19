@@ -28,6 +28,8 @@ export const routes: Routes = [
       { path: 'kidding-radar', loadComponent: () => import('./features/kidding-radar/kidding-radar.component').then((module) => module.KiddingRadarComponent) },
       { path: 'feed', component: FeedComponent },
       { path: 'inventory', component: CrudPageComponent, data: { resource: 'inventory' } },
+      { path: 'stores', component: CrudPageComponent, data: { resource: 'stores' } },
+      { path: 'locations', component: CrudPageComponent, data: { resource: 'locations' } },
       { path: 'procurement', loadComponent: () => import('./features/procurement/procurement.component').then((module) => module.ProcurementComponent) },
       { path: 'suppliers', component: CrudPageComponent, data: { resource: 'suppliers' } },
       { path: 'assets', component: CrudPageComponent, data: { resource: 'assets' } },

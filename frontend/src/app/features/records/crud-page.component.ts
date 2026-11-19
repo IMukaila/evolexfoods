@@ -287,8 +287,9 @@ export class CrudPageComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     if (filter.lookup) {
       const source = this.lookups[filter.lookup] || [];
+      const valueKey = filter.lookupValue || 'id';
       return source.map((item: any) => ({
-        value: item.id,
+        value: item[valueKey],
         label: item.name || item.title || item.animal_id || item.code || String(item.id)
       }));
     }
@@ -399,7 +400,7 @@ export class CrudPageComponent implements OnInit, AfterViewInit, OnDestroy {
     if (lookup === 'media_assets') {
       return item.title;
     }
-    if (lookup === 'users' || lookup === 'employees' || lookup === 'suppliers' || lookup === 'companies' || lookup === 'locations' || lookup === 'pipeline_stages') {
+    if (lookup === 'users' || lookup === 'employees' || lookup === 'suppliers' || lookup === 'companies' || lookup === 'locations' || lookup === 'stores' || lookup === 'pipeline_stages') {
       return item.name;
     }
     return item.name || item.title || String(item.id);

@@ -79,6 +79,7 @@ export class ShellComponent implements OnInit, OnDestroy {
       expanded: false,
       items: [
         { path: '/inventory', label: 'Inventory', icon: 'inventory', permission: 'inventory.view' },
+        { path: '/stores', label: 'Stores & Locations', icon: 'locations', permission: 'inventory.view' },
         { path: '/procurement', label: 'Procurement', icon: 'procurement', permission: 'procurement.view' },
         { path: '/suppliers', label: 'Suppliers', icon: 'suppliers', permission: 'suppliers.view' },
         { path: '/assets', label: 'Assets', icon: 'assets', permission: 'assets.view' },
